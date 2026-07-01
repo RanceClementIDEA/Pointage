@@ -32,6 +32,10 @@ function initFirebase() {
     firebase.initializeApp(FIREBASE_CONFIG);
     db   = firebase.firestore();
     auth = firebase.auth();
+    // Persistance offline (nouvelle API, évite le warning deprecated)
+    try {
+      db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
+    } catch(e) {}
     db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
     firebaseReady = true;
     auth.onAuthStateChanged(user => {
@@ -146,6 +150,8 @@ function onUserLogin(user) {
 ════════════════════════════════════════════ */
 function subscribeAll() {
   setSyncStatus('syncing', 'Chargement…');
+  // Initialiser calY/calM immédiatement pour éviter "undefined" sur le calendrier
+  initApp();
 
   unsubSettings = db.doc(userDoc()).onSnapshot(snap => {
     if (snap.exists) {

@@ -8,10 +8,10 @@
    5. Activez : Authentication (Email + Google) + Firestore
 ════════════════════════════════════════════ */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBOuUwspRnbMhwt1kU66zZ4U5rzDfv7FI8",
-  authDomain: "pointage-e9591.firebaseapp.com",
-  projectId: "pointage-e9591",
-  storageBucket: "pointage-e9591.firebasestorage.app",
-  messagingSenderId: "967658174113",
-  appId: "1:967658174113:web:defe0e59d70afe6cc562e0"
+  apiKey:            "VOTRE_API_KEY",
+  authDomain:        "VOTRE_PROJECT.firebaseapp.com",
+  projectId:         "VOTRE_PROJECT_ID",
+  storageBucket:     "VOTRE_PROJECT.appspot.com",
+  messagingSenderId: "VOTRE_SENDER_ID",
+  appId:             "VOTRE_APP_ID"
 };
