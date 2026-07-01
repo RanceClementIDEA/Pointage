@@ -1,376 +1,375 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#070B18">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>⏱ TimeFlow — Pointage Pro</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>TimeFlow — Pointage Pro</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#070B18">
+  <link rel="icon" type="image/png" href="Logo.png">
+  <link rel="apple-touch-icon" href="Logo.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TimeFlow">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- ═══════════ LOGIN ═══════════ -->
+<!-- ══════════════ LOGIN ══════════════ -->
 <div id="loginScreen">
-  <div class="login-bg"><div class="lb1"></div><div class="lb2"></div></div>
   <div class="login-card">
-    <div class="login-logo-wrap">
-      <img src="Logo.png" alt="TimeFlow" class="login-logo-img" onerror="this.style.display='none';document.getElementById('loginLogoFallback').style.display='flex'">
-      <div class="login-logo-icon" id="loginLogoFallback" style="display:none">⏱</div>
-      <div class="login-app-name">TimeFlow</div>
-      <div class="login-tagline">Pointage professionnel synchronisé</div>
-    </div>
-    <div class="auth-tabs">
-      <div class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Connexion</div>
-      <div class="auth-tab" id="tabRegister" onclick="switchTab('register')">Inscription</div>
+    <div class="login-brand">
+      <div class="login-logo-wrap">
+        <img src="Logo.png" alt="TimeFlow" class="login-logo"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="login-logo-fallback" style="display:none">⏱</div>
+      </div>
+      <p class="login-app-name">TimeFlow</p>
+      <p class="login-tagline">Pointage & suivi des heures</p>
     </div>
     <div class="login-form">
-      <div class="lf-group" id="nameField" style="display:none">
-        <label>Prénom &amp; Nom</label>
-        <input type="text" id="authName" placeholder="Marie Dupont" autocomplete="name">
-      </div>
-      <div class="lf-group">
-        <label>Adresse email</label>
-        <input type="email" id="authEmail" placeholder="vous@exemple.fr" autocomplete="email">
-      </div>
-      <div class="lf-group">
-        <label>Mot de passe</label>
-        <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password">
-      </div>
-      <div class="auth-error" id="authError"></div>
-      <button class="btn-auth" id="btnAuthSubmit" onclick="authSubmit()">
-        <span id="authBtnLabel">Se connecter</span>
-      </button>
-      <div class="divider-or">ou</div>
-      <button class="btn-google" onclick="authGoogle()">
-        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 20-8 20-20 0-1.3-.1-2.7-.4-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.5 29.3 4 24 4c-7.7 0-14.4 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.5 35.6 26.9 36 24 36c-5.2 0-9.6-2.9-11.3-7.1l-6.5 5C9.7 39.7 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.6l6.2 5.2C40.8 35.9 44 30.4 44 24c0-1.3-.1-2.7-.4-4z"/></svg>
-        Continuer avec Google
+      <label for="usernameInput">Identifiant</label>
+      <input type="text" id="usernameInput" placeholder="Votre nom ou email" autocomplete="username">
+      <button id="loginBtn">
+        <span>Se connecter</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </button>
     </div>
-    <div class="login-config-note" id="configNote" style="display:none">
-      ⚠️ Firebase non configuré — mode local actif.<br>
-      Éditez <code>firebase-config.js</code> avec vos clés.<br>
-      <a href="https://console.firebase.google.com" target="_blank">→ console.firebase.google.com</a>
-    </div>
+  </div>
+  <div class="login-bg-shapes">
+    <div class="shape s1"></div>
+    <div class="shape s2"></div>
+    <div class="shape s3"></div>
   </div>
 </div>
 
-<!-- ═══════════ APP ═══════════ -->
+<!-- ══════════════ APP SHELL ══════════════ -->
 <div id="appShell" style="display:none">
 
-  <!-- SIDENAV desktop -->
-  <nav id="sidenav">
-    <div class="nav-logo-wrap">
-      <img src="Logo.png" alt="TF" class="nav-logo-img" onerror="this.style.display='none';document.getElementById('navLogoFallback').style.display='flex'">
-      <div class="nav-logo" id="navLogoFallback" style="display:none">⏱</div>
-    </div>
-    <div class="nav-item active" data-v="dashboard" onclick="sv('dashboard',this)">🏠<span class="tip">Tableau de bord</span></div>
-    <div class="nav-item" data-v="saisie"    onclick="sv('saisie',this)">✏️<span class="tip">Saisie manuelle</span></div>
-    <div class="nav-item" data-v="calendar"  onclick="sv('calendar',this)">📅<span class="tip">Calendrier</span></div>
-    <div class="nav-item" data-v="history"   onclick="sv('history',this)">📋<span class="tip">Historique</span></div>
-    <div class="nav-item" data-v="stats"     onclick="sv('stats',this)">📊<span class="tip">Statistiques</span></div>
-    <div class="nav-sep"></div>
-    <div class="nav-item" data-v="contracts" onclick="sv('contracts',this)">📄<span class="tip">Contrats</span></div>
-    <div class="nav-item" data-v="badges"    onclick="sv('badges',this)">🏆<span class="tip">Badges</span></div>
-    <div class="nav-item" data-v="export"    onclick="sv('export',this)">📤<span class="tip">Export</span></div>
-    <div class="nav-sep"></div>
-    <div class="nav-item nav-bottom" data-v="settings" onclick="sv('settings',this)">⚙️<span class="tip">Paramètres</span></div>
-    <div class="nav-sep" style="margin-top:0"></div>
-    <div class="user-avatar-nav" id="navAvatar" onclick="openUserMenu()"></div>
-  </nav>
+  <div id="sidebarOverlay"></div>
 
-  <div id="main">
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <img src="Logo.png" alt="TimeFlow" class="sidebar-logo"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="sidebar-logo-fallback" style="display:none">⏱</div>
+      <span class="sidebar-title">TimeFlow</span>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <div class="user-details">
+        <span class="user-name" id="userInfo">—</span>
+        <span class="user-role">Utilisateur</span>
+      </div>
+      <button id="logoutBtn" title="Déconnexion" class="btn-logout">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- NAV VUES -->
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <button class="nav-btn active" data-view="dashboard" onclick="sv('dashboard',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Tableau de bord
+      </button>
+      <button class="nav-btn" data-view="saisie" onclick="sv('saisie',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Saisie manuelle
+      </button>
+      <button class="nav-btn" data-view="calendar" onclick="sv('calendar',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Calendrier
+      </button>
+      <button class="nav-btn" data-view="history" onclick="sv('history',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Historique
+      </button>
+      <button class="nav-btn" data-view="stats" onclick="sv('stats',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Statistiques
+      </button>
+    </nav>
+
+    <nav class="sidebar-nav" style="margin-top:8px">
+      <div class="nav-section-label">Gestion</div>
+      <button class="nav-btn" data-view="contracts" onclick="sv('contracts',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Contrats
+      </button>
+      <button class="nav-btn" data-view="export" onclick="sv('export',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-refresh" id="syncSettingsBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Synchronisation
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-wrap">
 
     <!-- TOPBAR -->
-    <div id="topbar">
-      <button class="topbar-menu" onclick="toggleDrawer()">☰</button>
-      <div class="topbar-logo-wrap">
-        <img src="Logo.png" alt="TF" class="topbar-logo" onerror="this.style.display='none'">
-      </div>
-      <div class="topbar-titles">
+    <div class="topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <div class="topbar-center">
         <div class="topbar-title" id="topTitle">Tableau de bord</div>
         <div class="topbar-sub"  id="topSub"></div>
       </div>
       <div class="topbar-right">
-        <div class="sync-indicator synced" id="syncInd" onclick="manualSync()">
-          <div class="sync-dot-ind"></div>
-          <span id="syncTxt">Sync</span>
-        </div>
         <div class="live-clock" id="liveClock">00:00:00</div>
       </div>
     </div>
 
-    <!-- ══ DASHBOARD ══ -->
-    <div class="view active" id="view-dashboard">
+    <!-- VUES -->
+    <main id="mainContent">
 
-      <div class="hero">
-        <div class="hero-top">
-          <div class="hero-left">
-            <div class="hero-day-label">Aujourd'hui</div>
-            <div class="hero-date" id="heroDate">—</div>
-            <div class="hero-status hs-idle" id="heroStatus">
-              <div class="sdot"></div><span id="heroSTxt">En attente</span>
+      <!-- ── DASHBOARD ── -->
+      <div class="view active" id="view-dashboard">
+        <div class="hero">
+          <div class="hero-top">
+            <div class="hero-left">
+              <div class="hero-day-label">Aujourd'hui</div>
+              <div class="hero-date" id="heroDate">—</div>
+              <div class="hero-status hs-idle" id="heroStatus">
+                <div class="sdot"></div><span id="heroSTxt">En attente</span>
+              </div>
+            </div>
+            <div class="hero-center">
+              <div class="elapsed-label">⏱ Temps travaillé</div>
+              <div class="elapsed" id="elapsedDisp">00:00:00</div>
+              <div class="live-earn-wrap">
+                <div class="live-earn-label">💰 Gains aujourd'hui</div>
+                <div class="live-earn" id="todayEarnLive">0,00 €</div>
+                <div class="live-earn-rate" id="liveRateDisp"></div>
+              </div>
             </div>
           </div>
-          <div class="hero-center">
-            <div class="elapsed-label">⏱ Temps travaillé</div>
-            <div class="elapsed" id="elapsedDisp">00:00:00</div>
-            <div class="live-earn-wrap">
-              <div class="live-earn-label">💰 Gains aujourd'hui</div>
-              <div class="live-earn" id="todayEarnLive">0,00 €</div>
-              <div class="live-earn-rate" id="liveRateDisp"></div>
-            </div>
+          <div class="punch-grid">
+            <button class="punch-btn pb-em" id="btn-em" onclick="punch('em',event)">☀️ Entrée matin<span class="punch-time" id="pt-em"></span></button>
+            <button class="punch-btn pb-sm" id="btn-sm" onclick="punch('sm',event)" disabled>🌤 Sortie midi<span class="punch-time" id="pt-sm"></span></button>
+            <button class="punch-btn pb-ea" id="btn-ea" onclick="punch('ea',event)" disabled>🌇 Entrée après-midi<span class="punch-time" id="pt-ea"></span></button>
+            <button class="punch-btn pb-es" id="btn-es" onclick="punch('es',event)" disabled>🌙 Sortie soir<span class="punch-time" id="pt-es"></span></button>
           </div>
         </div>
-        <div class="punch-grid">
-          <button class="punch-btn pb-em" id="btn-em" onclick="punch('em',event)">☀️ Entrée matin<span class="punch-time" id="pt-em"></span></button>
-          <button class="punch-btn pb-sm" id="btn-sm" onclick="punch('sm',event)" disabled>🌤 Sortie midi<span class="punch-time" id="pt-sm"></span></button>
-          <button class="punch-btn pb-ea" id="btn-ea" onclick="punch('ea',event)" disabled>🌇 Entrée après-midi<span class="punch-time" id="pt-ea"></span></button>
-          <button class="punch-btn pb-es" id="btn-es" onclick="punch('es',event)" disabled>🌙 Sortie soir<span class="punch-time" id="pt-es"></span></button>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-label">🕒 Semaine — heures</div>
+            <div class="stat-val v-neon" id="sw-h">0h00</div>
+            <div class="stat-sub" id="sw-t">/ 35h objectif</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">💰 Semaine — gains</div>
+            <div class="stat-val v-gold" id="sw-e">0,00 €</div>
+            <div class="stat-sub" id="sw-d">0 jour(s)</div>
+          </div>
+          <div class="stat-card live-card">
+            <div class="stat-label">📅 Mois — gains <span class="live-badge">LIVE</span></div>
+            <div class="stat-val v-violet live-count" id="sm-e">0,00 €</div>
+            <div class="stat-sub" id="sm-s">—</div>
+            <div class="live-progress-bar"><div class="live-progress-fill" id="monthProgressFill" style="width:0%"></div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">🔥 Streak</div>
+            <div class="stat-val v-gold" id="streak-v">0</div>
+            <div class="stat-sub">jours consécutifs</div>
+          </div>
+        </div>
+
+        <div class="dash-bottom">
+          <div class="card">
+            <div class="card-title">⏱ Timeline du jour</div>
+            <div class="tl" id="todayTL"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📄 Contrat actif</div>
+            <div id="activeContractInfo"></div>
+          </div>
         </div>
       </div>
 
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-label">🕒 Semaine — heures</div>
-          <div class="stat-val v-neon" id="sw-h">0h00</div>
-          <div class="stat-sub" id="sw-t">/ 35h objectif</div>
+      <!-- ── SAISIE ── -->
+      <div class="view" id="view-saisie">
+        <div class="manual-panel">
+          <div class="manual-title">✏️ Saisie / modification d'un jour</div>
+          <div class="frow">
+            <div class="fgroup"><label>Date</label><input type="date" id="manDate" oninput="loadDayIntoForm();previewMan()"></div>
+            <div class="fgroup" style="justify-content:flex-end;padding-top:20px">
+              <button class="btn btn-ghost btn-sm" onclick="fillManToday()">📅 Aujourd'hui</button>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fgroup"><label>☀️ Entrée matin</label><input type="time" id="man-em" oninput="previewMan()"></div>
+            <div class="fgroup"><label>🌤 Sortie midi</label><input type="time" id="man-sm" oninput="previewMan()"></div>
+          </div>
+          <div class="frow">
+            <div class="fgroup"><label>🌇 Entrée après-midi</label><input type="time" id="man-ea" oninput="previewMan()"></div>
+            <div class="fgroup"><label>🌙 Sortie soir</label><input type="time" id="man-es" oninput="previewMan()"></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-neon" onclick="saveManual()">💾 Enregistrer</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearMan()">✕ Effacer</button>
+            <button class="btn btn-danger btn-sm" id="btnDelDay" style="display:none" onclick="deleteDayBtn()">🗑 Supprimer</button>
+          </div>
+          <div id="manPreview" style="margin-top:12px"></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">💰 Semaine — gains</div>
-          <div class="stat-val v-gold" id="sw-e">0,00 €</div>
-          <div class="stat-sub" id="sw-d">0 jour(s)</div>
+        <div class="section-hdr"><div class="section-title">📋 Saisies récentes</div></div>
+        <div id="manualList"></div>
+      </div>
+
+      <!-- ── CALENDRIER ── -->
+      <div class="view" id="view-calendar">
+        <div class="card" style="flex-shrink:0">
+          <div class="cal-header">
+            <button class="cal-nav" onclick="calNav(-1)">‹</button>
+            <div class="cal-month-lbl" id="calLabel">—</div>
+            <button class="cal-nav" onclick="calNav(1)">›</button>
+            <button class="btn btn-ghost btn-sm" onclick="calToday()">Auj.</button>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
         </div>
-        <div class="stat-card live-card">
-          <div class="stat-label">📅 Mois — gains <span class="live-badge">LIVE</span></div>
-          <div class="stat-val v-violet live-count" id="sm-e">0,00 €</div>
-          <div class="stat-sub" id="sm-s">—</div>
-          <div class="live-progress-bar"><div class="live-progress-fill" id="monthProgressFill" style="width:0%"></div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">🔥 Streak</div>
-          <div class="stat-val v-gold" id="streak-v">0</div>
-          <div class="stat-sub">jours consécutifs</div>
+        <div class="cal-legend"><span>🟢 Complet</span><span>🟡 Partiel</span><span>🟣 Auj.</span><span>🔵 Manuel</span></div>
+        <div class="card" id="calDetail" style="display:none;flex-shrink:0">
+          <div class="section-hdr">
+            <div class="section-title" id="calDetailTitle">—</div>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('calDetail').style.display='none'">✕</button>
+          </div>
+          <div id="calDetailContent"></div>
         </div>
       </div>
 
-      <div class="dash-bottom">
-        <div class="card">
-          <div class="card-title">⏱ Timeline du jour</div>
-          <div class="tl" id="todayTL"></div>
+      <!-- ── HISTORIQUE ── -->
+      <div class="view" id="view-history">
+        <div class="section-hdr" style="flex-shrink:0">
+          <div class="section-title">Historique</div>
+          <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+            <input type="month" id="histFilter" class="field-input" oninput="renderHistory()">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('histFilter').value='';renderHistory()">Tout</button>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-title">📄 Contrat actif</div>
-          <div id="activeContractInfo"></div>
-        </div>
+        <div id="histList"></div>
       </div>
-    </div>
 
-    <!-- ══ SAISIE ══ -->
-    <div class="view" id="view-saisie">
-      <div class="manual-panel">
-        <div class="manual-title">✏️ Saisie / modification d'un jour</div>
-        <div class="frow">
-          <div class="fgroup"><label>Date</label><input type="date" id="manDate" oninput="loadDayIntoForm();previewMan()"></div>
-          <div class="fgroup" style="justify-content:flex-end;padding-top:18px"><button class="btn btn-ghost btn-sm" onclick="fillManToday()">📅 Aujourd'hui</button></div>
+      <!-- ── STATS ── -->
+      <div class="view" id="view-stats">
+        <div class="section-hdr" style="flex-shrink:0">
+          <div class="section-title">📊 Statistiques</div>
+          <select id="statPeriod" class="field-input" onchange="renderStats()">
+            <option value="week">Cette semaine</option>
+            <option value="month">Ce mois</option>
+            <option value="3m">3 mois</option>
+          </select>
         </div>
-        <div class="frow">
-          <div class="fgroup"><label>☀️ Entrée matin</label><input type="time" id="man-em" oninput="previewMan()"></div>
-          <div class="fgroup"><label>🌤 Sortie midi</label><input type="time" id="man-sm" oninput="previewMan()"></div>
+        <div class="stats-row" id="statsCards" style="flex-shrink:0"></div>
+        <div class="chart-row">
+          <div class="card"><div class="card-title">⏱ Heures / jour</div><div class="chart-wrap" id="hoursChart"></div></div>
+          <div class="card"><div class="card-title">💰 Gains / jour</div><div class="chart-wrap" id="earnChart"></div></div>
         </div>
-        <div class="frow">
-          <div class="fgroup"><label>🌇 Entrée après-midi</label><input type="time" id="man-ea" oninput="previewMan()"></div>
-          <div class="fgroup"><label>🌙 Sortie soir</label><input type="time" id="man-es" oninput="previewMan()"></div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-neon" onclick="saveManual()">💾 Enregistrer</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearMan()">✕ Effacer</button>
-          <button class="btn btn-danger btn-sm" id="btnDelDay" style="display:none" onclick="deleteDayBtn()">🗑 Supprimer</button>
-        </div>
-        <div id="manPreview" style="margin-top:12px"></div>
       </div>
-      <div class="section-hdr"><div class="section-title">📋 Saisies manuelles récentes</div></div>
-      <div id="manualList"></div>
-    </div>
 
-    <!-- ══ CALENDRIER ══ -->
-    <div class="view" id="view-calendar">
-      <div class="card" style="flex-shrink:0">
-        <div class="cal-header">
-          <button class="cal-nav" onclick="calNav(-1)">‹</button>
-          <div class="cal-month-lbl" id="calLabel">—</div>
-          <button class="cal-nav" onclick="calNav(1)">›</button>
-          <button class="btn btn-ghost btn-sm" onclick="calToday()">Auj.</button>
+      <!-- ── CONTRATS ── -->
+      <div class="view" id="view-contracts">
+        <div class="section-hdr" style="flex-shrink:0">
+          <div class="section-title">📄 Contrats</div>
+          <button class="btn btn-primary" onclick="openContractModal()">+ Nouveau</button>
         </div>
-        <div class="cal-grid" id="calGrid"></div>
+        <div id="contractsList"></div>
       </div>
-      <div class="cal-legend"><span>🟢 Complet</span><span>🟡 Partiel</span><span>🟣 Auj.</span><span>🔵 Manuel</span></div>
-      <div class="card" id="calDetail" style="display:none;flex-shrink:0">
-        <div class="section-hdr">
-          <div class="section-title" id="calDetailTitle">—</div>
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('calDetail').style.display='none'">✕</button>
-        </div>
-        <div id="calDetailContent"></div>
-      </div>
-    </div>
 
-    <!-- ══ HISTORIQUE ══ -->
-    <div class="view" id="view-history">
-      <div class="section-hdr" style="flex-shrink:0">
-        <div class="section-title">Historique</div>
-        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
-          <input type="month" id="histFilter" class="field-input" oninput="renderHistory()">
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('histFilter').value='';renderHistory()">Tout</button>
+      <!-- ── EXPORT ── -->
+      <div class="view" id="view-export">
+        <div class="section-title" style="flex-shrink:0;margin-bottom:14px">📤 Export & Rapports</div>
+        <div style="flex-shrink:0">
+          <div class="frow">
+            <div class="fgroup"><label>Début</label><input type="date" id="expFrom"></div>
+            <div class="fgroup"><label>Fin</label><input type="date" id="expTo"></div>
+          </div>
+          <div class="export-grid">
+            <div class="exp-card" onclick="exportCSV()"><div class="exp-icon">📊</div><div class="exp-name">CSV / Excel</div><div class="exp-desc">Import Excel, Sheets…</div></div>
+            <div class="exp-card" onclick="exportTxt()"><div class="exp-icon">📄</div><div class="exp-name">Rapport texte</div><div class="exp-desc">Récapitulatif lisible</div></div>
+            <div class="exp-card" onclick="exportJSON()"><div class="exp-icon">🗄</div><div class="exp-name">Sauvegarde JSON</div><div class="exp-desc">Backup complet</div></div>
+          </div>
+        </div>
+        <div class="card" style="flex-shrink:0">
+          <div class="card-title">📥 Importer une sauvegarde JSON</div>
+          <label class="btn btn-ghost" style="cursor:pointer;margin-top:4px">📁 Choisir un fichier<input type="file" accept=".json" style="display:none" onchange="importJSON(event)"></label>
         </div>
       </div>
-      <div id="histList"></div>
-    </div>
 
-    <!-- ══ STATS ══ -->
-    <div class="view" id="view-stats">
-      <div class="section-hdr" style="flex-shrink:0">
-        <div class="section-title">📊 Statistiques</div>
-        <select id="statPeriod" class="field-input" onchange="renderStats()">
-          <option value="week">Cette semaine</option>
-          <option value="month">Ce mois</option>
-          <option value="3m">3 mois</option>
-        </select>
-      </div>
-      <div class="stats-row" id="statsCards" style="flex-shrink:0"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex-shrink:0">
-        <div class="card"><div class="card-title">⏱ Heures / jour</div><div class="chart-wrap" id="hoursChart"></div></div>
-        <div class="card"><div class="card-title">💰 Gains / jour</div><div class="chart-wrap" id="earnChart"></div></div>
-      </div>
-    </div>
-
-    <!-- ══ CONTRATS ══ -->
-    <div class="view" id="view-contracts">
-      <div class="section-hdr" style="flex-shrink:0">
-        <div class="section-title">📄 Contrats</div>
-        <button class="btn btn-primary" onclick="openContractModal()">+ Nouveau</button>
-      </div>
-      <div id="contractsList"></div>
-    </div>
-
-    <!-- ══ BADGES ══ -->
-    <div class="view" id="view-badges">
-      <div class="streak-bar">
-        <div class="streak-fire">🔥</div>
-        <div>
-          <div class="streak-count" id="streakBig">0</div>
-          <div style="font-size:11px;color:var(--text3)">jours consécutifs</div>
-        </div>
-        <div style="margin-left:auto;text-align:right">
-          <div style="font-size:11px;color:var(--text3)">Record</div>
-          <div class="streak-best" id="bestStreak">0</div>
-        </div>
-      </div>
-      <div class="section-hdr" style="flex-shrink:0">
-        <div class="section-title">🏆 Badges</div>
-        <span class="tag tag-v" id="badgeCount">0/0</span>
-      </div>
-      <div class="badge-grid" id="badgeGrid"></div>
-    </div>
-
-    <!-- ══ EXPORT ══ -->
-    <div class="view" id="view-export">
-      <div class="section-title" style="flex-shrink:0;margin-bottom:14px">📤 Export & Rapports</div>
-      <div style="flex-shrink:0">
-        <div class="frow">
-          <div class="fgroup"><label>Début</label><input type="date" id="expFrom"></div>
-          <div class="fgroup"><label>Fin</label><input type="date" id="expTo"></div>
-        </div>
-        <div class="export-grid">
-          <div class="exp-card" onclick="exportCSV()"><div class="exp-icon">📊</div><div class="exp-name">CSV / Excel</div><div class="exp-desc">Import Excel, Sheets…</div></div>
-          <div class="exp-card" onclick="exportTxt()"><div class="exp-icon">📄</div><div class="exp-name">Rapport texte</div><div class="exp-desc">Récapitulatif lisible</div></div>
-          <div class="exp-card" onclick="exportJSON()"><div class="exp-icon">🗄</div><div class="exp-name">Sauvegarde JSON</div><div class="exp-desc">Backup complet</div></div>
-        </div>
-      </div>
-      <div class="card" style="flex-shrink:0">
-        <div class="card-title">📥 Importer une sauvegarde JSON</div>
-        <label class="btn btn-ghost" style="cursor:pointer;margin-top:4px">📁 Choisir un fichier<input type="file" accept=".json" style="display:none" onchange="importJSON(event)"></label>
-      </div>
-    </div>
-
-    <!-- ══ PARAMÈTRES ══ -->
-    <div class="view" id="view-settings">
-      <div class="section-title" style="flex-shrink:0;margin-bottom:14px">⚙️ Paramètres</div>
-      <div class="card" id="cloudStatusCard" style="flex-shrink:0">
-        <div class="card-title">☁️ Statut Firestore</div>
-        <div id="cloudStatusContent"></div>
-      </div>
-      <div class="card" style="flex-shrink:0">
-        <div class="card-title">👤 Profil</div>
-        <div class="frow">
-          <div class="fgroup"><label>Votre nom</label><input type="text" id="sName" placeholder="Marie Dupont"></div>
-          <div class="fgroup"><label>Objectif hebdo (h)</label><input type="number" id="sWeek" value="35" min="1" max="80"></div>
-        </div>
-        <div class="frow">
-          <div class="fgroup"><label>Seuil pause (h)</label><input type="number" id="sBT" value="6" min="1" max="12" step="0.5"></div>
-          <div class="fgroup"><label>Durée pause (min)</label><input type="number" id="sBD" value="30" min="0" max="120"></div>
-        </div>
-        <button class="btn btn-primary" onclick="saveSettings()">💾 Sauvegarder</button>
-      </div>
-      <div class="card" style="flex-shrink:0">
-        <div class="card-title" style="color:var(--red)">⚠️ Zone de danger</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-danger btn-sm" onclick="resetTodayC()">🗑 Réinit. aujourd'hui</button>
-          <button class="btn btn-danger btn-sm" onclick="resetAllC()">💣 Tout effacer</button>
-          <button class="btn btn-danger btn-sm" onclick="logout()">🚪 Déconnexion</button>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /main -->
-
-  <div id="bottomNav">
-    <div class="bnav-item active" data-v="dashboard" onclick="sv('dashboard',this)"><div class="bnav-icon">🏠</div><div class="bnav-label">Accueil</div></div>
-    <div class="bnav-item" data-v="saisie"   onclick="sv('saisie',this)"><div class="bnav-icon">✏️</div><div class="bnav-label">Saisie</div></div>
-    <div class="bnav-item" data-v="calendar" onclick="sv('calendar',this)"><div class="bnav-icon">📅</div><div class="bnav-label">Calendrier</div></div>
-    <div class="bnav-item" data-v="history"  onclick="sv('history',this)"><div class="bnav-icon">📋</div><div class="bnav-label">Historique</div></div>
-    <div class="bnav-item" data-v="stats"    onclick="sv('stats',this)"><div class="bnav-icon">📊</div><div class="bnav-label">Stats</div></div>
+    </main>
   </div>
 </div>
 
-<!-- DRAWER mobile -->
-<div id="drawer">
-  <div id="drawer-bg" onclick="toggleDrawer()"></div>
-  <div id="drawer-panel">
-    <div class="drawer-logo">
-      <img src="Logo.png" alt="TF" class="drawer-logo-img" onerror="this.style.display='none';document.getElementById('drawerLogoFallback').style.display='flex'">
-      <div class="drawer-logo-icon" id="drawerLogoFallback" style="display:none">⏱</div>
-      <div class="drawer-logo-text">TimeFlow</div>
+<!-- ══════════════ MODALE SYNC ══════════════ -->
+<div id="syncModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>☁️ Synchronisation cloud</h3>
+      <button id="closeSyncModalBtn" class="modal-close">✕</button>
     </div>
-    <div class="drawer-user">
-      <div class="drawer-user-name"  id="drawerName">—</div>
-      <div class="drawer-user-email" id="drawerEmail">—</div>
+    <p class="modal-sub">
+      Synchronise vos pointages, contrats et paramètres entre tous vos appareils
+      via votre propre projet Firebase gratuit.
+    </p>
+    <p id="syncStatus" class="sync-status">⚪ Synchronisation non configurée</p>
+
+    <label class="modal-label">Configuration Firebase (JSON)</label>
+    <textarea id="syncConfigInput" rows="5" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+
+    <label class="modal-label">Code de synchronisation</label>
+    <input type="text" id="syncCodeInput" placeholder="Identique sur tous vos appareils, ex : timeflow-2026">
+
+    <label class="modal-checkbox">
+      <input type="checkbox" id="syncEnabledToggle">
+      Synchronisation automatique active
+    </label>
+
+    <div class="modal-actions">
+      <button id="connectSyncBtn"    class="btn-primary">☁️ Connecter</button>
+      <button id="pushSyncBtn"       class="btn-secondary">⬆️ Envoyer</button>
+      <button id="pullSyncBtn"       class="btn-secondary">⬇️ Récupérer</button>
+      <button id="disconnectSyncBtn" class="btn-secondary">🔌 Désactiver</button>
     </div>
-    <div class="drawer-item active" data-v="dashboard" onclick="sv('dashboard',this);toggleDrawer()"><span class="dii">🏠</span>Tableau de bord</div>
-    <div class="drawer-item" data-v="saisie"    onclick="sv('saisie',this);toggleDrawer()"><span class="dii">✏️</span>Saisie manuelle</div>
-    <div class="drawer-item" data-v="calendar"  onclick="sv('calendar',this);toggleDrawer()"><span class="dii">📅</span>Calendrier</div>
-    <div class="drawer-item" data-v="history"   onclick="sv('history',this);toggleDrawer()"><span class="dii">📋</span>Historique</div>
-    <div class="drawer-item" data-v="stats"     onclick="sv('stats',this);toggleDrawer()"><span class="dii">📊</span>Statistiques</div>
-    <div class="drawer-sep"></div>
-    <div class="drawer-item" data-v="contracts" onclick="sv('contracts',this);toggleDrawer()"><span class="dii">📄</span>Contrats</div>
-    <div class="drawer-item" data-v="badges"    onclick="sv('badges',this);toggleDrawer()"><span class="dii">🏆</span>Badges</div>
-    <div class="drawer-item" data-v="export"    onclick="sv('export',this);toggleDrawer()"><span class="dii">📤</span>Export</div>
-    <div class="drawer-sep"></div>
-    <div class="drawer-item" data-v="settings"  onclick="sv('settings',this);toggleDrawer()"><span class="dii">⚙️</span>Paramètres</div>
-    <div class="drawer-sep"></div>
-    <div class="drawer-item" onclick="logout();toggleDrawer()" style="color:var(--red)"><span class="dii">🚪</span>Déconnexion</div>
   </div>
 </div>
 
+<!-- MODAL GÉNÉRIQUE -->
 <div id="modalBg" onclick="closeMod(event)"><div class="modal" id="modalContent"></div></div>
-<div id="toast"><span id="ti"></span><span id="tm"></span></div>
 
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- Firebase (compat — même version que l'annuaire KPI) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

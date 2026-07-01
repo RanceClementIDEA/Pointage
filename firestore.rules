@@ -8,6 +8,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── Usernames (réservation globale) ──
+    // Lecture ouverte : nécessaire pour vérifier la dispo AVANT la création du compte
+    // Écriture : uniquement par le propriétaire du compte
+    match /usernames/{username} {
+      allow read:   if true;  // lecture publique pour vérifier la disponibilité
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null
+                    && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // ── Données utilisateur ──
     // Chaque utilisateur ne peut lire/écrire QUE ses propres données
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;

@@ -1,0 +1,34 @@
+════════════════════════════════════════════
+  TIMEFLOW — Configuration synchronisation
+════════════════════════════════════════════
+
+Dans l'app → sidebar → bouton "Synchronisation"
+Collez ce JSON dans le champ "Configuration Firebase" :
+
+{
+  "apiKey": "AIzaSyBOuUwspRnbMhwt1kU66zZ4U5rzDfv7FI8",
+  "authDomain": "pointage-e9591.firebaseapp.com",
+  "projectId": "pointage-e9591",
+  "storageBucket": "pointage-e9591.firebasestorage.app",
+  "messagingSenderId": "967658174113",
+  "appId": "1:967658174113:web:defe0e59d70afe6cc562e0"
+}
+
+Code de synchronisation (à choisir librement) :
+  → Ex : timeflow-2026
+  → Même code sur tous vos appareils = mêmes données
+
+════════════════════════════════════════════
+  RÈGLES FIRESTORE À COLLER
+  Firebase Console → Firestore → Règles
+════════════════════════════════════════════
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tf_pointage/{code} {
+      allow read, write: if true;
+    }
+  }
+}
+
