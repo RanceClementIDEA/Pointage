@@ -7,7 +7,7 @@
    4. Collez les valeurs ci-dessous
    5. Activez : Authentication (Email + Google) + Firestore
 ════════════════════════════════════════════ */
-const firebase_Config = {
+const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBOuUwspRnbMhwt1kU66zZ4U5rzDfv7FI8",
   authDomain: "pointage-e9591.firebaseapp.com",
   projectId: "pointage-e9591",
