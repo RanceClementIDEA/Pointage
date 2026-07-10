@@ -417,12 +417,38 @@ function renderHistory(){
 /* ════════════════════════════════════════════
    STATS
 ════════════════════════════════════════════ */
+let statOffset=0;
+function statPeriodChange(){statOffset=0;renderStats();}
+function statNav(d){statOffset=Math.min(0,statOffset+d);renderStats();}
+function statToday(){statOffset=0;renderStats();}
+
 function renderStats(){
   const period=document.getElementById('statPeriod').value,now=new Date();
-  let entries=[];
-  if(period==='week'){const dow=now.getDay()||7;for(let i=1;i<=7;i++){const d=new Date(now);d.setDate(now.getDate()-dow+i);entries.push(fmtDate(d));}}
-  else if(period==='month'){const days=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();for(let i=1;i<=days;i++)entries.push(`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(i)}`);}
-  else{for(let mo=2;mo>=0;mo--){const d=new Date(now.getFullYear(),now.getMonth()-mo,1),days=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();for(let i=1;i<=days;i++){const dd=new Date(d.getFullYear(),d.getMonth(),i);if(dd<=now)entries.push(fmtDate(dd));}}}
+  let entries=[],lbl='';
+  const capMonth={month:'short'},capMonthY={month:'short',year:'numeric'};
+  if(period==='week'){
+    const ref=new Date(now);ref.setDate(now.getDate()+statOffset*7);
+    const dow=ref.getDay()||7,start=new Date(ref);start.setDate(ref.getDate()-dow+1);
+    for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);entries.push(fmtDate(d));}
+    const end=new Date(start);end.setDate(start.getDate()+6);
+    lbl=`Sem. du ${start.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})} au ${end.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}`;
+  }
+  else if(period==='month'){
+    const ref=new Date(now.getFullYear(),now.getMonth()+statOffset,1);
+    const days=new Date(ref.getFullYear(),ref.getMonth()+1,0).getDate();
+    for(let i=1;i<=days;i++)entries.push(`${ref.getFullYear()}-${pad(ref.getMonth()+1)}-${pad(i)}`);
+    lbl=ref.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    lbl=lbl.charAt(0).toUpperCase()+lbl.slice(1);
+  }
+  else{
+    const base=new Date(now.getFullYear(),now.getMonth()+statOffset*3,1);
+    for(let mo=2;mo>=0;mo--){const d=new Date(base.getFullYear(),base.getMonth()-mo,1),days=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();for(let i=1;i<=days;i++){const dd=new Date(d.getFullYear(),d.getMonth(),i);if(dd<=now)entries.push(fmtDate(dd));}}
+    const first=new Date(base.getFullYear(),base.getMonth()-2,1);
+    lbl=`${first.toLocaleDateString('fr-FR',capMonth)} – ${base.toLocaleDateString('fr-FR',capMonthY)}`;
+  }
+  const lblEl=document.getElementById('statPeriodLbl');if(lblEl)lblEl.textContent=lbl;
+  const nextBtn=document.getElementById('statNavNext');
+  if(nextBtn){nextBtn.disabled=statOffset>=0;nextBtn.style.opacity=statOffset>=0?'.35':'1';nextBtn.style.pointerEvents=statOffset>=0?'none':'auto';}
   let tMin=0,tEarn=0,wDays=0,maxMin=0;const hD=[],eD=[];
   entries.forEach(ds=>{const day=S.punches[ds];if(day){const{net}=calcDay(day),{earn}=calcEarn(ds,day);tMin+=net;tEarn+=earn;if(net>0)wDays++;if(net>maxMin)maxMin=net;hD.push({date:ds,val:net});eD.push({date:ds,val:earn});}else{hD.push({date:ds,val:0});eD.push({date:ds,val:0});}});
   const avg=wDays>0?tMin/wDays:0;
