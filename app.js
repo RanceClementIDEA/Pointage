@@ -125,12 +125,37 @@ function getContract(ds) {
     return (!c.startDate||c.startDate<=ds)&&(!c.endDate||c.endDate>=ds);
   })||null;
 }
+/* Lundi→dimanche : les 7 dates ISO de la semaine contenant ds */
+function weekDatesOf(ds) {
+  const d=new Date(ds+'T00:00:00'), dow=d.getDay()||7;
+  const start=new Date(d); start.setDate(d.getDate()-dow+1);
+  const dates=[];
+  for(let i=0;i<7;i++){const dd=new Date(start); dd.setDate(start.getDate()+i); dates.push(fmtDate(dd));}
+  return dates;
+}
+/* Heures nettes déjà cumulées plus tôt dans la même semaine (même contrat), avant ds */
+function calcWeekHoursBefore(ds, c) {
+  let total=0;
+  for(const k of weekDatesOf(ds)){
+    if(k>=ds) break;
+    const day=S.punches[k]; if(!day) continue;
+    if(getContract(k)!==c) continue; // n'additionne que les jours du même contrat
+    total += calcDay(day).net/60;
+  }
+  return total;
+}
 function calcEarn(ds, day) {
   const c=getContract(ds); if(!c)return{earn:0,rate:0};
   const{net}=calcDay(day), h=net/60, rate=parseFloat(c.hourlyRate)||0;
-  let earn=h*rate;
   const ot=parseFloat(c.overtimeThreshold)||0, or2=parseFloat(c.overtimeRate)||1.25;
-  if(ot>0&&h>ot) earn=ot*rate+(h-ot)*rate*or2;
+  let earn=h*rate;
+  if(ot>0){
+    // Seuil hebdomadaire : les heures qui font dépasser le cumul de la semaine sont majorées
+    const before=calcWeekHoursBefore(ds,c);
+    const remaining=Math.max(0, ot-before);
+    const regular=Math.min(h,remaining), extra=h-regular;
+    earn=regular*rate+extra*rate*or2;
+  }
   return{earn,rate};
 }
 function calcStreak() {
@@ -169,7 +194,13 @@ function calcLiveDayEarn() {
   if(day.ea){const e=day.es?parseT(day.es)*60:nowSec;totalSec+=Math.max(0,e-parseT(day.ea)*60);}
   if(totalSec>=bThreshSec)totalSec=Math.max(0,totalSec-bDurSec);
   const h=totalSec/3600, ot=parseFloat(c.overtimeThreshold)||0, or2=parseFloat(c.overtimeRate)||1.25;
-  return Math.max(0, ot>0&&h>ot ? ot*rate+(h-ot)*rate*or2 : h*rate);
+  if(ot>0){
+    const before=calcWeekHoursBefore(key,c);
+    const remaining=Math.max(0, ot-before);
+    const regular=Math.min(h,remaining), extra=h-regular;
+    return Math.max(0, regular*rate+extra*rate*or2);
+  }
+  return Math.max(0, h*rate);
 }
 
 function calcLiveMonthEarn() {
@@ -294,7 +325,7 @@ function renderActiveContract() {
   if(!el)return;
   if(!c){el.innerHTML=`<div class="empty-state" style="padding:12px 0"><div class="empty-icon" style="font-size:22px">📋</div><p style="font-size:12px">Aucun contrat actif.</p></div>`;return;}
   const tCls='ct-'+(c.type||'Autre');
-  el.innerHTML=`<div class="ctype-badge ${tCls}">${c.type||'Autre'}</div><div class="cname" style="font-size:12px">${c.name}</div><div class="cperiod">${c.startDate||'—'} → ${c.endDate||'En cours'}</div><div class="cchips"><div class="cchip rate">💰 ${c.hourlyRate} €/h</div><div class="cchip">⏸ ${c.breakDuration}min si ≥${c.breakThreshold}h</div>${c.overtimeThreshold?`<div class="cchip">🔥 ×${c.overtimeRate} après ${c.overtimeThreshold}h</div>`:''}<div class="cchip active">✅ Actif</div></div>`;
+  el.innerHTML=`<div class="ctype-badge ${tCls}">${c.type||'Autre'}</div><div class="cname" style="font-size:12px">${c.name}</div><div class="cperiod">${c.startDate||'—'} → ${c.endDate||'En cours'}</div><div class="cchips"><div class="cchip rate">💰 ${c.hourlyRate} €/h</div><div class="cchip">⏸ ${c.breakDuration}min si ≥${c.breakThreshold}h</div>${c.overtimeThreshold?`<div class="cchip">🔥 ×${c.overtimeRate} après ${c.overtimeThreshold}h/sem</div>`:''}<div class="cchip active">✅ Actif</div></div>`;
 }
 
 /* ════════════════════════════════════════════
@@ -473,14 +504,14 @@ function renderContracts(){
   const today=todayKey();
   el.innerHTML=S.contracts.map((c,i)=>{
     const isA=(!c.startDate||c.startDate<=today)&&(!c.endDate||c.endDate>=today),tCls='ct-'+(c.type||'Autre');
-    return `<div class="ccard ${isA?'is-active':''}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px"><div style="flex:1;min-width:0"><div class="ctype-badge ${tCls}">${c.type||'Autre'}</div><div class="cname">${c.name}</div><div class="cperiod">${c.startDate||'Début non défini'} → ${c.endDate||'En cours'}</div></div><div style="display:flex;gap:4px;flex-shrink:0"><button class="btn btn-ghost btn-sm btn-icon" onclick="openContractModal(${i})">✏️</button><button class="btn btn-danger btn-sm btn-icon" onclick="delContract(${i})">🗑</button></div></div><div class="cchips"><div class="cchip rate">💰 ${c.hourlyRate} €/h</div><div class="cchip">⏸ ${c.breakDuration}min si ≥${c.breakThreshold}h</div>${c.overtimeThreshold?`<div class="cchip">🔥 ×${c.overtimeRate} après ${c.overtimeThreshold}h</div>`:''}${isA?`<div class="cchip active">✅ Actif</div>`:''}</div></div>`;
+    return `<div class="ccard ${isA?'is-active':''}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px"><div style="flex:1;min-width:0"><div class="ctype-badge ${tCls}">${c.type||'Autre'}</div><div class="cname">${c.name}</div><div class="cperiod">${c.startDate||'Début non défini'} → ${c.endDate||'En cours'}</div></div><div style="display:flex;gap:4px;flex-shrink:0"><button class="btn btn-ghost btn-sm btn-icon" onclick="openContractModal(${i})">✏️</button><button class="btn btn-danger btn-sm btn-icon" onclick="delContract(${i})">🗑</button></div></div><div class="cchips"><div class="cchip rate">💰 ${c.hourlyRate} €/h</div><div class="cchip">⏸ ${c.breakDuration}min si ≥${c.breakThreshold}h</div>${c.overtimeThreshold?`<div class="cchip">🔥 ×${c.overtimeRate} après ${c.overtimeThreshold}h/sem</div>`:''}${isA?`<div class="cchip active">✅ Actif</div>`:''}</div></div>`;
   }).join('');
 }
 
 function openContractModal(idx=null){
   const c=idx!==null?S.contracts[idx]:{};
   const typeOpts=CONTRACT_TYPES.map(t=>`<option value="${t}" ${c.type===t?'selected':''}>${t}</option>`).join('');
-  document.getElementById('modalContent').innerHTML=`<div class="modal-head"><div class="modal-ttl">${idx!==null?'✏️ Modifier':'📄 Nouveau contrat'}</div><button class="modal-x" onclick="closeMod()">×</button></div><div class="frow" style="grid-template-columns:1fr"><div class="fgroup"><label>Nom du contrat</label><input type="text" id="cName" value="${c.name||''}" placeholder="Ex: CDI Développeur"></div></div><div class="frow"><div class="fgroup"><label>Type</label><select id="cType"><option value="">— Type —</option>${typeOpts}</select></div><div class="fgroup"><label>Taux horaire (€/h)</label><input type="number" id="cRate" value="${c.hourlyRate||''}" step="0.01" min="0" placeholder="15.50"></div></div><div class="frow"><div class="fgroup"><label>Date début</label><input type="date" id="cStart" value="${c.startDate||''}"></div><div class="fgroup"><label>Date fin (optionnel)</label><input type="date" id="cEnd" value="${c.endDate||''}"></div></div><div class="frow"><div class="fgroup"><label>Seuil pause (h)</label><input type="number" id="cBT" value="${c.breakThreshold||6}" step="0.5" min="0"></div><div class="fgroup"><label>Durée pause (min)</label><input type="number" id="cBD" value="${c.breakDuration||30}" min="0"></div></div><div class="frow"><div class="fgroup"><label>Seuil heures supp (h/j, 0=off)</label><input type="number" id="cOT" value="${c.overtimeThreshold||0}" step="0.5" min="0"></div><div class="fgroup"><label>Majoration (×)</label><input type="number" id="cOR" value="${c.overtimeRate||1.25}" step="0.05" min="1"></div></div><div style="display:flex;justify-content:flex-end;gap:7px;margin-top:6px"><button class="btn btn-ghost" onclick="closeMod()">Annuler</button><button class="btn btn-primary" onclick="saveContract(${idx})">💾 Sauvegarder</button></div>`;
+  document.getElementById('modalContent').innerHTML=`<div class="modal-head"><div class="modal-ttl">${idx!==null?'✏️ Modifier':'📄 Nouveau contrat'}</div><button class="modal-x" onclick="closeMod()">×</button></div><div class="frow" style="grid-template-columns:1fr"><div class="fgroup"><label>Nom du contrat</label><input type="text" id="cName" value="${c.name||''}" placeholder="Ex: CDI Développeur"></div></div><div class="frow"><div class="fgroup"><label>Type</label><select id="cType"><option value="">— Type —</option>${typeOpts}</select></div><div class="fgroup"><label>Taux horaire (€/h)</label><input type="number" id="cRate" value="${c.hourlyRate||''}" step="0.01" min="0" placeholder="15.50"></div></div><div class="frow"><div class="fgroup"><label>Date début</label><input type="date" id="cStart" value="${c.startDate||''}"></div><div class="fgroup"><label>Date fin (optionnel)</label><input type="date" id="cEnd" value="${c.endDate||''}"></div></div><div class="frow"><div class="fgroup"><label>Seuil pause (h)</label><input type="number" id="cBT" value="${c.breakThreshold||6}" step="0.5" min="0"></div><div class="fgroup"><label>Durée pause (min)</label><input type="number" id="cBD" value="${c.breakDuration||30}" min="0"></div></div><div class="frow"><div class="fgroup"><label>Seuil heures supp (h/semaine, 0=off)</label><input type="number" id="cOT" value="${c.overtimeThreshold||0}" step="0.5" min="0"></div><div class="fgroup"><label>Majoration (×)</label><input type="number" id="cOR" value="${c.overtimeRate||1.25}" step="0.05" min="1"></div></div><div style="display:flex;justify-content:flex-end;gap:7px;margin-top:6px"><button class="btn btn-ghost" onclick="closeMod()">Annuler</button><button class="btn btn-primary" onclick="saveContract(${idx})">💾 Sauvegarder</button></div>`;
   openMod();
 }
 
