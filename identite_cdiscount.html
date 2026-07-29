@@ -1,0 +1,68 @@
+{
+  "_comment": "Golden files d'identite produit (Axe 2). Composant de reference : gpu_rx9060xt, recherche 'Radeon RX 9060 XT 16Go'. niveau_attendu : 3 exacte (EAN) | 2 haute (MPN) | 1 faible (titre) | 0 aucune. Regenerer : python tests/golden/_generer_identite.py",
+  "composant": "gpu_rx9060xt",
+  "ean_reference": "4015454000014",
+  "mpn_reference": "RX9060XT-16G-GAMING",
+  "entrees": [
+    {
+      "fichier": "identite_cdiscount.html",
+      "site": "cdiscount",
+      "titre": "Sapphire PULSE Radeon RX 9060 XT 16 Go GDDR6",
+      "prix": 419.9,
+      "gtin_attendu": "4015454000014",
+      "mpn_attendu": "RX9060XT-16G-GAMING",
+      "niveau_attendu": 3,
+      "commentaire": "EAN + MPN declares : c'est la source de l'identite de reference"
+    },
+    {
+      "fichier": "identite_ldlc.html",
+      "site": "ldlc",
+      "titre": "Sapphire PULSE AMD Radeon RX 9060 XT 16Go GDDR6",
+      "prix": 429.99,
+      "gtin_attendu": "4015454000014",
+      "mpn_attendu": null,
+      "niveau_attendu": 3,
+      "commentaire": "Meme EAN que cdiscount : correspondance exacte, aucun doute"
+    },
+    {
+      "fichier": "identite_alternate.html",
+      "site": "alternate",
+      "titre": "SAPPHIRE Pulse Radeon RX 9060 XT 16GB",
+      "prix": 415.0,
+      "gtin_attendu": null,
+      "mpn_attendu": "rx9060xt 16g gaming",
+      "niveau_attendu": 2,
+      "commentaire": "Pas d'EAN, mais le MPN normalise correspond (casse et separateurs differents)"
+    },
+    {
+      "fichier": "identite_mindfactory.html",
+      "site": "mindfactory",
+      "titre": "Sapphire Radeon RX 9060 XT 16GB GDDR6 Grafikkarte",
+      "prix": 398.5,
+      "gtin_attendu": null,
+      "mpn_attendu": null,
+      "niveau_attendu": 1,
+      "commentaire": "Trouve par la recherche elargie, sans identifiant : heuristique de titre"
+    },
+    {
+      "fichier": "identite_cybertek.html",
+      "site": "cybertek",
+      "titre": "Cable adaptateur PCIe 12VHPWR pour Radeon RX 9060 XT",
+      "prix": 12.9,
+      "gtin_attendu": "4712345000121",
+      "mpn_attendu": "CABLE-12VHPWR",
+      "niveau_attendu": 0,
+      "commentaire": "ACCESSOIRE : EAN different et titre rejete -> ne doit PAS entrer dans le plancher"
+    },
+    {
+      "fichier": "identite_ean8.html",
+      "site": "grosbill",
+      "titre": "Sapphire Radeon RX 9060 XT 16 Go",
+      "prix": 432.0,
+      "gtin_attendu": "96385074",
+      "mpn_attendu": null,
+      "niveau_attendu": 0,
+      "commentaire": "EAN-8 valide mais different : produit distinct, non fusionne"
+    }
+  ]
+}

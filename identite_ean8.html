@@ -1,0 +1,202 @@
+# -*- coding: utf-8 -*-
+"""
+Filet de securite de l'interface web locale.
+
+Deux choses sont verrouillees ici, et la seconde compte plus que la
+premiere :
+
+  1. l'API rend bien l'etat du projet, lu dans la base a chaque appel ;
+  2. l'interface ne dégrade RIEN de ce qui existait -- ni la politesse
+     reseau, ni la confidentialite, ni le mail quotidien.
+
+Le point 2 vient d'un vrai incident : la connexion sqlite3 n'etait
+utilisable que dans le thread qui l'avait ouverte. Le moteur de collecte
+interrogeant les vendeurs par lots de 8 en parallele, chaque lecture du
+cache HTTP conditionnel echouait -- et l'erreur etant absorbee par la
+couche de donnees, le cache rendait `None` a chaque fois. Aucune requete
+conditionnelle n'etait donc emise et chaque page etait retelechargee
+entierement : la politesse du prompt 8.3 etait annulee en silence.
+"""
+import json
+import sqlite3
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+import pytest
+
+import serveur
+import sqlite_store
+
+RACINE = Path(__file__).resolve().parent.parent
+BASE = RACINE / "prices.db"
+
+besoin_base = pytest.mark.skipif(
+    not BASE.exists(), reason="prices.db absent (depot fraichement clone)")
+
+
+# --- La base doit etre lisible depuis n'importe quel thread ---------------
+
+@besoin_base
+def test_la_base_est_lisible_hors_du_thread_douverture():
+    """Le defaut qui annulait la politesse reseau."""
+    sqlite_store.configure(BASE)
+    resultat = {}
+
+    def dans_un_autre_thread():
+        resultat["history"] = sqlite_store.charger_history()
+
+    fil = threading.Thread(target=dans_un_autre_thread)
+    fil.start()
+    fil.join()
+    assert resultat["history"], (
+        "lecture vide depuis un autre thread : l'erreur est absorbee par la "
+        "couche de donnees, donc le defaut passe inapercu")
+
+
+@besoin_base
+def test_le_cache_http_survit_au_moteur_parallele():
+    """
+    Le moteur interroge 8 vendeurs a la fois. Si le cache n'est pas lisible
+    depuis ces threads, aucune requete conditionnelle n'est emise et chaque
+    page est retelechargee en entier.
+    """
+    sqlite_store.configure(BASE)
+    url = "https://test-interne.invalid/cache"
+    try:
+        sqlite_store.memoriser_cache_http(url, "test", etag='"jeton"', prix=1.0)
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            lus = list(pool.map(lambda _: sqlite_store.lire_cache_http(url),
+                                range(16)))
+        assert all(l and l.get("etag") == '"jeton"' for l in lus), (
+            f"{sum(1 for l in lus if l)}/16 lectures reussies")
+    finally:
+        with sqlite3.connect(BASE) as conn:
+            conn.execute("DELETE FROM cache_http WHERE url = ?", (url,))
+
+
+@besoin_base
+def test_letat_est_coherent_depuis_plusieurs_threads():
+    sqlite_store.configure(BASE)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        totaux = list(pool.map(lambda _: serveur.construire_etat()["total_global"],
+                               range(8)))
+    assert len(set(totaux)) == 1, f"totaux divergents : {set(totaux)}"
+
+
+# --- L'API ----------------------------------------------------------------
+
+@besoin_base
+def test_letat_porte_le_projet_et_ses_composants():
+    etat = serveur.construire_etat()
+    assert etat["projets"], "aucun projet"
+    p = etat["projets"][0]
+    assert p["composants"]
+    assert p["total"] > 0
+    assert p["strategie"]
+    for c in p["composants"]:
+        assert {"id", "nom", "prix", "conseil", "serie"} <= set(c)
+
+
+@besoin_base
+def test_letat_est_serialisable_en_json():
+    """La page ne peut rien afficher si l'etat ne passe pas en JSON."""
+    brut = json.dumps(serveur.construire_etat(), ensure_ascii=False, default=str)
+    assert json.loads(brut)["total_global"] >= 0
+
+
+@besoin_base
+def test_letat_annonce_la_fraicheur():
+    """Un prix ancien reste un prix ancien : la page doit le dire."""
+    f = serveur.construire_etat()["fraicheur"]
+    assert "dernier_releve" in f and "jours" in f
+
+
+@besoin_base
+def test_letat_est_relu_a_chaque_appel():
+    """
+    Aucun cache : c'est ce qui rend l'affichage instantane quand un cycle
+    de collecte ecrit dans la base.
+    """
+    avant = serveur.construire_etat()
+    apres = serveur.construire_etat()
+    assert avant["instant"] <= apres["instant"]
+    assert avant["total_global"] == apres["total_global"]
+
+
+# --- La politesse ne se delegue pas a la discipline de l'utilisateur ------
+
+def test_un_delai_minimal_separe_deux_collectes():
+    """Un bouton invite a cliquer ; le garde-fou est dans le code."""
+    assert serveur.DELAI_MIN_COLLECTE >= 300, (
+        "sans delai minimal, la page permettrait de relancer un cycle complet "
+        "en boucle sur le dos des marchands")
+
+
+def test_une_collecte_en_cours_ne_peut_pas_etre_doublee(monkeypatch):
+    c = serveur.Collecteur()
+    monkeypatch.setattr(c, "en_cours", lambda: True)
+    ok, message = c.lancer()
+    assert ok is False and "deja en cours" in message
+
+
+def test_le_delai_est_refuse_avec_un_message_explicite(monkeypatch):
+    import time
+    c = serveur.Collecteur()
+    c.derniere = time.time()
+    ok, message = c.lancer()
+    assert ok is False
+    assert "Trop tot" in message and "abusif" in message
+
+
+def test_la_collecte_passe_par_le_script_et_non_par_une_copie():
+    """
+    Relancer `price_tracker.py` reutilise toutes les garanties existantes
+    (delai par domaine, plafond de vendeurs, budget de temps). Les
+    reimplementer ici serait le meilleur moyen de les affaiblir.
+    """
+    import inspect
+    source = inspect.getsource(serveur.Collecteur.lancer)
+    assert "price_tracker.py" in source
+    assert "--no-email" in source, (
+        "la collecte lancee depuis la page ne doit pas declencher d'envoi : "
+        "le mail quotidien reste le canal des alertes")
+
+
+# --- Confidentialite ------------------------------------------------------
+
+def test_le_serveur_necoute_que_en_local():
+    """
+    Cette page expose budgets, objectifs de prix et historique complet.
+    Elle n'a rien a faire sur le reseau.
+    """
+    import inspect
+    source = inspect.getsource(serveur.demarrer)
+    assert '"127.0.0.1"' in source
+    assert "0.0.0.0" not in source
+
+
+def test_la_page_ne_depend_daucune_ressource_distante():
+    import re
+    for motif in (r'src\s*=\s*["\']https?://', r'href\s*=\s*["\']https?://',
+                  r"@import", r"cdn\.|googleapis|unpkg|jsdelivr"):
+        assert not re.search(motif, serveur.PAGE, re.I), f"dependance : {motif}"
+
+
+def test_la_page_ne_parle_qua_lapi_locale():
+    import re
+    appels = re.findall(r'fetch\(\s*"([^"]+)"', serveur.PAGE)
+    assert appels, "la page doit bien appeler l'API"
+    assert all(u.startswith("/api/") for u in appels), appels
+
+
+# --- Ce que l'interface ne remplace pas -----------------------------------
+
+def test_le_dashboard_autonome_existe_toujours():
+    """
+    Le fichier joint au mail doit rester lisible hors ligne, sans serveur.
+    L'interface web est un confort local EN PLUS, elle ne remplace rien.
+    """
+    import dashboard
+    assert hasattr(dashboard, "build_dashboard")
+    assert (RACINE / "dashboard.py").exists()

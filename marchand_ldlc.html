@@ -1,0 +1,477 @@
+{
+  "_comment": "Golden files du filet de securite price_tracker. Chaque entree liste des 'checks' (fn, kwargs, attendu) verifies par test_extracteurs_golden.py. attendu=null signifie que la fonction doit renvoyer None. La sentinelle kwargs.selecteurs='@config' est remplacee au test par config['selecteurs_sites']. Regenerer avec: python tests/golden/_generer_golden.py",
+  "produit": "Radeon RX 9060 XT 16 Go",
+  "entrees": [
+    {
+      "fichier": "marchand_ldlc.html",
+      "site": "ldlc",
+      "categorie": "marchand",
+      "source_selecteur": "code",
+      "description": "Fiche marchand ldlc : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 429.99
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "ldlc"
+          },
+          "attendu": 429.99
+        }
+      ]
+    },
+    {
+      "fichier": "marchand_cdiscount.html",
+      "site": "cdiscount",
+      "categorie": "marchand",
+      "source_selecteur": "code",
+      "description": "Fiche marchand cdiscount : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 419.9
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "cdiscount"
+          },
+          "attendu": 419.9
+        }
+      ]
+    },
+    {
+      "fichier": "marchand_amazon.html",
+      "site": "amazon",
+      "categorie": "marchand",
+      "source_selecteur": "code",
+      "description": "Fiche marchand amazon : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 435.0
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "amazon"
+          },
+          "attendu": 435.0
+        }
+      ]
+    },
+    {
+      "fichier": "marchand_rakuten.html",
+      "site": "rakuten",
+      "categorie": "marchand",
+      "source_selecteur": "code",
+      "description": "Fiche marchand rakuten : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 424.5
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "rakuten"
+          },
+          "attendu": 424.5
+        }
+      ]
+    },
+    {
+      "fichier": "marchand_materiel_net.html",
+      "site": "materiel.net",
+      "categorie": "marchand",
+      "source_selecteur": "code",
+      "description": "Fiche marchand materiel.net : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 427.99
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "materiel.net"
+          },
+          "attendu": 427.99
+        }
+      ]
+    },
+    {
+      "fichier": "marchand_grosbill.html",
+      "site": "grosbill",
+      "categorie": "marchand",
+      "source_selecteur": "code",
+      "description": "Fiche marchand grosbill : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 432.0
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "grosbill"
+          },
+          "attendu": 432.0
+        }
+      ]
+    },
+    {
+      "fichier": "marchand_topachat.html",
+      "site": "topachat",
+      "categorie": "marchand",
+      "source_selecteur": "code",
+      "description": "Fiche marchand topachat : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 425.95
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "topachat"
+          },
+          "attendu": 425.95
+        }
+      ]
+    },
+    {
+      "fichier": "marchand_alternate.html",
+      "site": "alternate",
+      "categorie": "marchand",
+      "source_selecteur": "config",
+      "description": "Fiche marchand alternate : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 439.0
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "alternate",
+            "selecteurs": "@config"
+          },
+          "attendu": 439.0
+        }
+      ]
+    },
+    {
+      "fichier": "marchand_pccomponentes.html",
+      "site": "pccomponentes",
+      "categorie": "marchand",
+      "source_selecteur": "config",
+      "description": "Fiche marchand pccomponentes : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 415.0
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "pccomponentes",
+            "selecteurs": "@config"
+          },
+          "attendu": 415.0
+        }
+      ]
+    },
+    {
+      "fichier": "marchand_fnac.html",
+      "site": "fnac",
+      "categorie": "marchand",
+      "source_selecteur": "config",
+      "description": "Fiche marchand fnac : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 441.99
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "fnac",
+            "selecteurs": "@config"
+          },
+          "attendu": 441.99
+        }
+      ]
+    },
+    {
+      "fichier": "marchand_darty.html",
+      "site": "darty",
+      "categorie": "marchand",
+      "source_selecteur": "config",
+      "description": "Fiche marchand darty : JSON-LD Offer + prix visible dans le selecteur du site.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 438.5
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "darty",
+            "selecteurs": "@config"
+          },
+          "attendu": 438.5
+        }
+      ]
+    },
+    {
+      "fichier": "comparateur_idealo.html",
+      "site": "idealo",
+      "categorie": "comparateur",
+      "description": "Comparateur idealo : AggregateOffer.lowPrice=399.00 (JSON-LD) et minimum de la liste=397.00 (texte), volontairement distincts. La livraison sous le plancher (port) doit etre ecartee.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": true
+          },
+          "attendu": 399.0
+        },
+        {
+          "fn": "extract_min_price_from_page",
+          "kwargs": {},
+          "attendu": 397.0
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "idealo"
+          },
+          "attendu": null
+        }
+      ]
+    },
+    {
+      "fichier": "comparateur_ledenicheur.html",
+      "site": "ledenicheur",
+      "categorie": "comparateur",
+      "description": "Comparateur ledenicheur : AggregateOffer.lowPrice=402.00 (JSON-LD) et minimum de la liste=405.00 (texte), volontairement distincts. La livraison sous le plancher (port) doit etre ecartee.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": true
+          },
+          "attendu": 402.0
+        },
+        {
+          "fn": "extract_min_price_from_page",
+          "kwargs": {},
+          "attendu": 405.0
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "ledenicheur"
+          },
+          "attendu": null
+        }
+      ]
+    },
+    {
+      "fichier": "comparateur_geizhals.html",
+      "site": "geizhals",
+      "categorie": "comparateur",
+      "description": "Comparateur geizhals : AggregateOffer.lowPrice=389.00 (JSON-LD) et minimum de la liste=388.00 (texte), volontairement distincts. La livraison sous le plancher (port) doit etre ecartee.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": true
+          },
+          "attendu": 389.0
+        },
+        {
+          "fn": "extract_min_price_from_page",
+          "kwargs": {},
+          "attendu": 388.0
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "geizhals"
+          },
+          "attendu": null
+        }
+      ]
+    },
+    {
+      "fichier": "cas_jsonld_seul.html",
+      "site": "-",
+      "categorie": "cas_limite",
+      "description": "Prix present uniquement en JSON-LD : le fallback CSS et le min-page doivent rendre None.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 299.0
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "ldlc"
+          },
+          "attendu": null
+        },
+        {
+          "fn": "extract_min_price_from_page",
+          "kwargs": {},
+          "attendu": null
+        }
+      ]
+    },
+    {
+      "fichier": "cas_css_seul_ldlc.html",
+      "site": "ldlc",
+      "categorie": "cas_limite",
+      "description": "Aucun JSON-LD : extract_price_from_jsonld -> None ; le fallback CSS ldlc retrouve le prix.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": null
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "ldlc"
+          },
+          "attendu": 259.0
+        },
+        {
+          "fn": "extract_min_price_from_page",
+          "kwargs": {},
+          "attendu": 259.0
+        }
+      ]
+    },
+    {
+      "fichier": "cas_jsonld_liste.html",
+      "site": "-",
+      "categorie": "cas_limite",
+      "description": "Le bloc JSON-LD est un tableau d'objets : le Product/Offer doit quand meme etre trouve.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 199.0
+        }
+      ]
+    },
+    {
+      "fichier": "cas_jsonld_virgule.html",
+      "site": "-",
+      "categorie": "cas_limite",
+      "description": "Prix JSON-LD '349,50' (virgule) : doit etre normalise en 349.50.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 349.5
+        }
+      ]
+    },
+    {
+      "fichier": "cas_aggregate_marchand.html",
+      "site": "-",
+      "categorie": "cas_limite",
+      "description": "AggregateOffer : lowPrice est prioritaire (rang 0), y compris avec prefer_low=False.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": 289.0
+        },
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": true
+          },
+          "attendu": 289.0
+        }
+      ]
+    },
+    {
+      "fichier": "cas_sans_prix.html",
+      "site": "-",
+      "categorie": "cas_limite",
+      "description": "Aucun prix (ni JSON-LD, ni selecteur, ni montant en EUR) : les trois extracteurs -> None.",
+      "checks": [
+        {
+          "fn": "extract_price_from_jsonld",
+          "kwargs": {
+            "prefer_low": false
+          },
+          "attendu": null
+        },
+        {
+          "fn": "extract_price_fallback",
+          "kwargs": {
+            "site": "ldlc"
+          },
+          "attendu": null
+        },
+        {
+          "fn": "extract_min_price_from_page",
+          "kwargs": {},
+          "attendu": null
+        }
+      ]
+    }
+  ]
+}
