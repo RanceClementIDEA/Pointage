@@ -1,0 +1,294 @@
+# PC Price Tracker — v2
+
+Suivi quotidien du prix de vos composants PC, avec historique, score
+d'affaire, calendrier des promos françaises et **plan d'achat** envoyé par
+email chaque matin.
+
+La nouveauté principale de la v2 : le script **importe un historique de prix
+préexistant** (relevés faits avant l'installation du suivi). Sans ça, le
+premier jour, tout est mécaniquement marqué « au plus bas » faute de recul,
+et les conseils ne servent à rien pendant deux semaines.
+
+---
+
+## 1. Installation
+
+### Sans rien installer : GitHub Actions
+
+Le script tourne sur les serveurs de GitHub, gratuitement, et vous envoie le
+rapport chaque jour. Rien sur votre machine — la bonne option si vous êtes
+sur un poste de travail verrouillé. Voir **`GITHUB_ACTIONS.md`**.
+
+### En local : le lanceur
+
+| Système | Action |
+|---|---|
+| Windows | Double-cliquez sur `lancer.bat` |
+| Mac | Double-cliquez sur `lancer.command` |
+| Linux | `chmod +x lancer.sh` puis `./lancer.sh` |
+
+Un menu s'ouvre, les dépendances s'installent toutes seules, et tout se fait
+sans commande à retenir (email, planification quotidienne incluses).
+Voir `DEMARRAGE_RAPIDE.md`.
+
+### En ligne de commande (si vous préférez)
+
+```bash
+pip install -r requirements.txt
+python price_tracker.py --report-only --no-email
+```
+
+Vous verrez déjà un rapport, construit à partir de l'historique pré-rempli
+dans `config.json` (prix réels relevés lors de nos recherches).
+
+---
+
+## 2. Les commandes (équivalents du menu)
+
+| Commande | Ce qu'elle fait |
+|---|---|
+| `python price_tracker.py` | Vérifie les prix + envoie l'email. **C'est la commande à planifier.** |
+| `python price_tracker.py --no-email` | Pareil, mais affiche le rapport dans le terminal |
+| `python price_tracker.py --dry-run --no-email` | Prix simulés, aucune requête réseau — pour tester |
+| `python price_tracker.py --report-only` | Rapport depuis l'historique, sans interroger les sites |
+| `python price_tracker.py --history cpu_5700x` | Affiche tout l'historique d'un composant |
+
+Plus une commande très utile au quotidien :
+
+```bash
+# Vous voyez un bon prix sur Dealabs, un forum, en magasin ?
+python price_tracker.py --add-price gpu_rx9060xt 389.90 dealabs
+
+# Avec une date précise (pour enrichir l'historique passé) :
+python price_tracker.py --add-price cpu_5700x 129.99 amazon --date 2026-07-15
+```
+
+Chaque prix saisi manuellement enrichit l'historique et améliore la
+pertinence des conseils. **C'est le meilleur moyen de rendre l'outil
+intelligent rapidement.**
+
+---
+
+## 3. Configuration
+
+### 3.1 Les URLs (à faire en premier)
+
+Dans `config.json`, certaines URLs sont des placeholders
+(`REMPLACEZ_PAR_ASIN_REEL`). Le script les détecte et les ignore proprement,
+mais remplacez-les par les vraies fiches produit pour que le suivi
+fonctionne. Les URLs LDLC et Cdiscount sont déjà réelles.
+
+### 3.2 L'historique préexistant — le point clé
+
+Deux mécanismes complémentaires :
+
+**`reference`** — les repères que vous connaissez sur un produit :
+
+```json
+"reference": {
+  "msrp": 499,              // prix catalogue / lancement
+  "historical_low": 349.00, // le plus bas jamais vu (même si c'était avant le suivi)
+  "typical_price": 429,     // le prix "normal" constaté
+  "note": "Plus bas 349 EUR (Sapphire Pulse, nov. 2025)."
+}
+```
+
+**`seed_history`** — des relevés datés précis :
+
+```json
+"seed_history": [
+  { "date": "2025-11-20", "site": "divers",    "price": 349.00 },
+  { "date": "2026-05-15", "site": "divers",    "price": 419.00 },
+  { "date": "2026-07-23", "site": "alternate", "price": 429.00 }
+]
+```
+
+Ces données sont importées une seule fois, au premier lancement (relancez
+avec `--reset-seed` si vous les modifiez).
+
+**Où trouver ces historiques ?**
+- **idealo.fr** affiche une courbe de prix sur 12 mois pour la plupart des
+  produits — la source la plus simple et la plus fiable.
+- **Dealabs** : cherchez le produit, les anciens deals donnent les meilleurs
+  prix historiques avec leurs dates.
+- **camelcamelcamel.com** pour tout ce qui est vendu sur Amazon.
+- Vos propres captures d'écran / paniers abandonnés.
+
+Prenez 15 minutes pour remplir ça sérieusement sur vos 3-4 composants les
+plus chers : c'est ce qui fait la différence entre un outil qui devine et un
+outil qui sait.
+
+### 3.3 Budget et seuils
+
+```json
+"budget": { "target_total": 1000, "max_total": 1150 },
+"thresholds": {
+  "deal_percent": 3,          // "bonne affaire" si à ≤3% du plus bas connu
+  "strong_deal_percent": 1,   // "au plus bas" si à ≤1%
+  "wait_percent": 10          // "attendre" si ≥10% au-dessus du prix habituel
+}
+```
+
+### 3.4 Contexte marché
+
+Permet d'inverser un conseil selon la dynamique d'une catégorie :
+
+```json
+"market_context": {
+  "RAM": { "trend": "hausse", "note": "Pénurie DDR4/DDR5..." }
+}
+```
+
+Sur une catégorie en **hausse**, un « ATTENDRE » devient « CORRECT »
+(attendre coûterait plus cher). Sur une catégorie en **baisse**, un
+« CORRECT » devient « ATTENDRE ». Mettez ces valeurs à jour 1 à 2 fois par
+an, ou quand vous lisez une actu marché marquante.
+
+### 3.5 Email
+
+Remplissez la section `email` de `config.json`, puis créez `.env` à partir
+de `.env.example` avec un **mot de passe d'application** Gmail (voir les
+instructions détaillées dans ce fichier). N'utilisez jamais votre mot de
+passe de compte principal.
+
+---
+
+## 4. Comment lire le rapport
+
+### Les 5 conseils possibles
+
+| Conseil | Signification | Action |
+|---|---|---|
+| **ACHETER** | Au plus bas connu ou à moins de 3% | Commandez, c'est le moment |
+| **ATTENDRE** | Au-dessus du prix habituel, ou baisse en cours, ou grosse promo imminente | Laissez passer quelques jours/semaines |
+| **CORRECT** | Prix raisonnable sans être exceptionnel | Achetez si vous êtes pressé |
+| **NEUTRE** | Rien à signaler | Continuez à observer |
+| **A VERIFIER** | Le prix vient de l'historique importé, pas d'un relevé récent | Vérifiez sur le site avant de commander |
+
+Ce dernier point est important pour la cohérence : le script ne vous dira
+jamais « achetez » sur la base d'un prix vieux de 47 jours qu'il n'a pas
+lui-même vérifié.
+
+### Le score /100
+
+Combine la position du prix dans sa fourchette historique connue (60%), sa
+proximité avec le plus bas (30%) et sa tendance (10%). 100 = au plus bas
+jamais vu. Si la fourchette connue est trop étroite (moins de 5% d'écart),
+le score reste neutre à 50 plutôt que de produire un chiffre trompeur sur un
+échantillon trop plat.
+
+### La stratégie du jour
+
+- **ACHETER MAINTENANT** — ≥60% des composants bien positionnés
+- **ACHAT ECHELONNE** — prenez les composants au plus bas, laissez venir les
+  autres. Rappel utile : le matériel PC ne se périme pas, acheter en
+  plusieurs fois est parfaitement viable et souvent plus économique.
+- **PATIENTER** — ≥50% des composants sont chers en ce moment
+- **OBSERVER** — pas de signal clair
+
+---
+
+## 5. Planifier l'exécution quotidienne
+
+### Mac / Linux
+
+```bash
+crontab -e
+```
+
+```
+0 8 * * * cd /chemin/absolu/vers/price_tracker && /usr/bin/python3 price_tracker.py >> log.txt 2>&1
+```
+
+### Windows
+
+Planificateur de tâches → Créer une tâche de base → quotidien →
+« Démarrer un programme » :
+- Programme : `python.exe` (chemin complet)
+- Arguments : `price_tracker.py`
+- Démarrer dans : le dossier `price_tracker`
+
+### Si vous ne voulez pas laisser une machine allumée
+
+Les tâches planifiées de Claude Cowork tournent sur le cloud (PC éteint
+possible) — ce n'est pas ce script exact, mais Claude peut faire une
+recherche de prix quotidienne et vous envoyer un récapitulatif.
+
+---
+
+## 6. Comment l'améliorer
+
+Classé par rapport valeur/effort.
+
+### Rapide et rentable
+
+1. **Enrichir l'historique** avec `--add-price` dès que vous voyez un prix
+   ailleurs. C'est de loin ce qui améliore le plus les conseils.
+2. **Ajouter des sources** par composant : plus il y a de revendeurs
+   comparés, plus l'intelligence par site devient fiable (le rapport vous
+   dit qui est le moins cher le plus souvent).
+3. **Ajuster les seuils** après 2-3 semaines : si tout est marqué « bonne
+   affaire », baissez `deal_percent` à 2 ou 1.
+4. **Suivre les alternatives**, pas seulement votre choix : ajoutez la
+   RTX 5060 Ti à côté de la RX 9060 XT et laissez le prix décider.
+
+### Moyen terme
+
+5. **Notification instantanée** sur grosse baisse : ajoutez un envoi
+   Telegram (bibliothèque `python-telegram-bot`) déclenché uniquement si un
+   composant passe sous son plus bas historique — l'email quotidien ne suffit
+   pas pour les ventes flash.
+6. **Surveiller la disponibilité** en plus du prix : un produit « en stock à
+   429 € » vaut mieux qu'un « rupture à 399 € ».
+7. **Graphique de tendance** dans l'email : matplotlib peut générer un PNG
+   d'évolution à joindre au message.
+8. **Flux RSS Dealabs** : Dealabs expose des flux RSS par mot-clé, qu'on peut
+   parser sans scraper de HTML — plus stable et dans les règles.
+
+### Plus ambitieux
+
+9. **Prédiction de prix** : avec 3-6 mois d'historique, un modèle simple
+   (régression, moyenne mobile) peut estimer si la baisse va continuer.
+   Attention à ne pas surinterpréter : le marché du GPU dépend surtout
+   d'annonces produit, pas de cycles réguliers.
+10. **APIs officielles** plutôt que scraping : Amazon Product Advertising API,
+    ou les flux affiliés de Rakuten/Cdiscount. Plus stable et parfaitement
+    légal, mais demande une inscription au programme d'affiliation.
+
+---
+
+## 7. Limites à connaître
+
+- **Le scraping est fragile et hors CGU.** Le script privilégie l'extraction
+  via données structurées JSON-LD (plus stable que les sélecteurs CSS), mais
+  un site qui change sa structure peut casser l'extraction. En usage
+  personnel à 1 requête/jour le risque est faible ; ne l'utilisez pas de
+  façon intensive ou commerciale.
+- **Les conseils sont des heuristiques**, pas des prédictions. Ils décrivent
+  où se situe un prix par rapport à son historique connu — ce qui est déjà
+  très utile — mais ne prévoient pas l'avenir.
+- **Les baisses annoncées par période promo sont des ordres de grandeur**
+  observés les années précédentes, pas des garanties.
+- **Vérifiez toujours avant de payer** : prix, disponibilité réelle, frais de
+  port, et le fait que le vendeur soit bien le marchand principal et non un
+  vendeur tiers inconnu sur une marketplace.
+
+---
+
+## 8. Fichiers
+
+```
+price_tracker/
+├── lancer.bat            # Windows  : double-clic pour ouvrir le menu
+├── lancer.command         # Mac      : double-clic pour ouvrir le menu
+├── lancer.sh               # Linux    : ./lancer.sh
+├── demarrer.py              # le menu interactif (appele par les lanceurs)
+├── price_tracker.py          # le moteur
+├── config.json                # composants, historique importé, budget, seuils
+├── DEMARRAGE_RAPIDE.md         # à lire en premier
+├── GUIDE_ACHAT.md               # stratégie : quand acheter, où, comment
+├── README.md                     # ce fichier
+├── .env.example                   # modèle pour le mot de passe email
+├── requirements.txt
+└── history.json                    # créé automatiquement
+```
