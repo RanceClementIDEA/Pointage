@@ -1,9 +1,0 @@
-# Dependances de developpement : uniquement necessaires pour lancer le filet
-# de securite (tests/). L'execution du suivi de prix n'en a pas besoin.
-#
-#     pip install -r requirements.txt -r requirements-dev.txt
-#     pytest
-
--r requirements.txt
-
-pytest==9.1.1
