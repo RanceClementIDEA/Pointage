@@ -1,0 +1,84 @@
+name: Publier le dashboard (facultatif)
+
+# ---------------------------------------------------------------------------
+# CE WORKFLOW NE S'EXECUTE JAMAIS TOUT SEUL.
+#
+# Pas de `schedule`, pas de declenchement sur push : uniquement un lancement
+# manuel depuis l'onglet Actions. C'est voulu -- publier est un geste, pas une
+# routine. Et meme lance a la main, il s'arrete si `publication_dashboard`
+# n'est pas a true dans config.json.
+#
+# Lire PUBLICATION.md avant de s'en servir : la publication rend les donnees
+# du dashboard PUBLIQUES.
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Tapez PUBLIER pour confirmer (les donnees deviendront publiques)"
+        required: true
+        default: ""
+
+# Lecture seule sur CE depot : le workflow n'y ecrit rien. L'ecriture se fait
+# sur le depot PUBLIC, via une cle de deploiement dediee.
+permissions:
+  contents: read
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verifier la confirmation
+        if: ${{ github.event.inputs.confirmation != 'PUBLIER' }}
+        run: |
+          echo "Confirmation absente : rien ne sera publie."
+          exit 1
+
+      - name: Recuperer le depot
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Installer les dependances
+        run: pip install -r requirements.txt
+
+      - name: Controler les garde-fous
+        # S'arrete si la publication est desactivee, si la cible est ce depot,
+        # ou si un element sensible est detecte dans le fichier.
+        run: python publier_dashboard.py --verifier
+
+      - name: Generer le dashboard
+        run: |
+          python price_tracker.py --report-only --no-email || true
+          python dashboard.py
+
+      - name: Preparer le dossier a publier
+        # Un seul fichier est copie : il n'y a rien a oublier d'exclure.
+        run: python publier_dashboard.py --dossier ./public
+
+      - name: Publier vers le depot PUBLIC dedie
+        # DASHBOARD_DEPLOY_KEY : cle de deploiement en ecriture sur le depot
+        # PUBLIC uniquement. Ne jamais y mettre une cle de ce depot-ci.
+        env:
+          DEPLOY_KEY: ${{ secrets.DASHBOARD_DEPLOY_KEY }}
+        run: |
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "Secret DASHBOARD_DEPLOY_KEY absent : publication annulee."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          python publier_dashboard.py
+
+      - name: Rappel
+        if: success()
+        run: |
+          echo "Dashboard publie. Les donnees qu'il contient sont desormais"
+          echo "consultables par toute personne connaissant l'URL."
