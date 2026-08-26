@@ -1,0 +1,339 @@
+<title>Testeur de génération PowerPoint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06202E; --bg-mid:#0B2D3E; --surface:#0F3548;
+  --accent:#00C4CC; --gold:#FFB020; --green:#10B981; --red:#EF4444;
+  --text-1:#F0F6FA; --text-2:#8DA8B8; --text-3:#4A6578;
+  --card:#FFFFFF; --card-text:#1C2B36; --card-sub:#5A7080;
+  --border:rgba(255,255,255,.08); --radius:12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text-1);
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px;margin:0 auto;padding:0 22px 80px}
+
+header{padding:32px 0 20px;border-bottom:1px solid var(--border);margin-bottom:20px}
+h1{font-family:'DM Sans',sans-serif;font-size:27px;font-weight:700;letter-spacing:-.02em}
+.lede{color:var(--text-2);margin-top:8px;max-width:78ch}
+h2{font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;letter-spacing:.01em;
+  color:var(--text-2);text-transform:uppercase;margin:26px 0 10px}
+h2 .n{color:var(--accent);margin-right:7px;font-variant-numeric:tabular-nums}
+
+.panneau{background:var(--bg-mid);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+.grille{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+label.champ{display:block;font-size:12px;color:var(--text-2);margin-bottom:5px}
+input,select,textarea{
+  width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;
+  padding:8px 11px;color:var(--text-1);font-family:inherit;font-size:13.5px;
+}
+textarea{min-height:132px;font-family:ui-monospace,'SF Mono',monospace;font-size:12.5px;line-height:1.6;resize:vertical}
+select option{color:var(--card-text)}
+.aide{font-size:12px;color:var(--text-3);margin-top:7px}
+
+.barre{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:14px 0}
+button{background:rgba(255,255,255,.08);color:var(--text-1);border:1px solid var(--border);
+  border-radius:8px;padding:8px 14px;font-size:13.5px;font-family:inherit;cursor:pointer;
+  transition:background .15s ease}
+button:hover:not(:disabled){background:rgba(255,255,255,.18)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.principal{background:var(--accent);border-color:var(--accent);color:#06202E;font-weight:600}
+button.principal:hover:not(:disabled){background:#00A9B0}
+.compte{margin-left:auto;color:var(--text-2);font-size:13px}
+
+.diapo{background:var(--card);color:var(--card-text);border-radius:var(--radius);padding:12px 15px;
+  margin-bottom:8px;display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:12px;align-items:start;
+  border-left:4px solid var(--green)}
+.diapo.att{border-left-color:var(--gold)}
+.diapo .num{font-weight:700;color:var(--accent);text-align:center;font-variant-numeric:tabular-nums;padding-top:3px}
+.diapo b{font-size:14.5px}
+.diapo .meta{margin-top:5px;font-size:12.5px;color:var(--card-sub);
+  font-family:ui-monospace,'SF Mono',monospace;word-break:break-all}
+.diapo .meta .cle{color:#0777A0}
+.diapo .note{margin-top:5px;font-size:12.5px;color:#96650B}
+.puce{font-size:11px;border-radius:100px;padding:2px 9px;font-weight:600;white-space:nowrap}
+.puce.ok{background:rgba(16,185,129,.16);color:#0B7355}
+.puce.att{background:rgba(255,176,32,.2);color:#96650B}
+
+.verdict{border-radius:var(--radius);padding:14px 17px;margin:12px 0;font-size:14.5px;border:1px solid}
+.verdict.ok{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);color:#7EE6C0}
+.verdict.att{background:rgba(255,176,32,.12);border-color:rgba(255,176,32,.4);color:#FFD489}
+.verdict.ko{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#FFA9A2}
+.verdict b{display:block;margin-bottom:3px}
+
+.journal{background:#04161F;border:1px solid var(--border);border-radius:var(--radius);
+  padding:13px 16px;font-family:ui-monospace,'SF Mono',monospace;font-size:12.5px;
+  color:var(--text-2);max-height:220px;overflow:auto;white-space:pre-wrap}
+.vide{color:var(--text-2);text-align:center;padding:28px}
+footer{margin-top:26px;padding-top:18px;border-top:1px solid var(--border);color:var(--text-3);font-size:12.5px}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Testeur de génération PowerPoint</h1>
+    <p class="lede">
+      Collez des liens Power BI, produisez le support, et voyez immédiatement ce qu'il contient —
+      diapositive par diapositive : quel visuel, et surtout <b>quel signet</b>, car c'est lui qui
+      porte le filtre du KPI. Tout se passe dans cette page : rien n'est envoyé, le modèle IDEA
+      est embarqué.
+    </p>
+  </header>
+
+  <h2><span class="n">1</span>Les KPI à mettre dans le support</h2>
+  <div class="panneau">
+    <label class="champ" for="liens">Un par ligne — <code>Intitulé | lien</code>, ou le lien seul</label>
+    <textarea id="liens" spellcheck="false"></textarea>
+    <div class="barre">
+      <button id="btnExemple">Charger les liens d'exemple</button>
+      <button id="btnVider">Vider</button>
+      <label class="champ" style="margin:0">
+        <span style="display:none">Charger</span>
+        <input type="file" id="fichier" accept=".json" style="display:none">
+      </label>
+      <button id="btnFichier">Charger une sauvegarde ou une sélection (.json)</button>
+      <span class="compte" id="compteLiens"></span>
+    </div>
+    <p class="aide">
+      Un lien de visuel ressemble à <code>…/reports/{rapport}/{page}?…&amp;visual={visuel}</code>.
+      Il s'obtient dans Power BI, sur le visuel : « … » → Partager → Lien vers cet élément visuel.
+      Les liens d'exemple viennent d'un export du 24/08 : pour éprouver vos liens à jour,
+      chargez une sauvegarde de l'annuaire ou collez-les directement.
+    </p>
+  </div>
+
+  <h2><span class="n">2</span>Couverture et contenu des visuels</h2>
+  <div class="panneau grille">
+    <div>
+      <label class="champ" for="titre">Titre de couverture</label>
+      <input type="text" id="titre" value="Indicateurs MAGASINS ARMEMENT">
+    </div>
+    <div>
+      <label class="champ" for="sousTitre">Sous-titre</label>
+      <input type="text" id="sousTitre" value="IDEA / CHANTIERS DE L'ATLANTIQUE">
+    </div>
+    <div>
+      <label class="champ" for="periode">Période</label>
+      <input type="text" id="periode" value="S30 à S33-2026">
+    </div>
+    <div>
+      <label class="champ" for="mode">Contenu des visuels</label>
+      <select id="mode">
+        <option value="vivant">Visuel vivant — complément Power BI</option>
+        <option value="lien">Cadre cliquable seul</option>
+      </select>
+    </div>
+  </div>
+
+  <h2><span class="n">3</span>Produire et contrôler</h2>
+  <div class="barre">
+    <button class="principal" id="btnGenerer">📊 Générer le PowerPoint</button>
+    <button id="btnTelecharger" disabled>⬇ Télécharger le fichier</button>
+    <span class="compte" id="etat"></span>
+  </div>
+
+  <div id="verdict"></div>
+  <div id="diapos"></div>
+
+  <h2><span class="n">4</span>Journal</h2>
+  <div class="journal" id="journal">En attente.</div>
+
+  <footer>
+    Le fichier produit n'est jamais envoyé : il est fabriqué puis relu ici même, dans votre
+    navigateur. Le contrôle utilise exactement le même code que la commande
+    <code>node outils/verifier-deck.js</code>.
+  </footer>
+</div>
+
+<script>/*__ZIP__*/</script>
+<script>/*__PPTX__*/</script>
+<script>/*__INSPECTEUR__*/</script>
+<script>
+"use strict";
+
+const MODELE_B64 = "/*__MODELE__*/";
+const EXEMPLES = /*__EXEMPLES__*/[];
+
+let dernierFichier = null;
+
+const $ = id => document.getElementById(id);
+const esc = v => String(v == null ? "" : v)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+function journal(texte, remplacer) {
+  const el = $("journal");
+  el.textContent = remplacer ? texte : (el.textContent === "En attente." ? texte : el.textContent + "\n" + texte);
+  el.scrollTop = el.scrollHeight;
+}
+
+function octetsDuModele() {
+  const brut = atob(MODELE_B64), o = new Uint8Array(brut.length);
+  for (let i = 0; i < brut.length; i++) o[i] = brut.charCodeAt(i);
+  return o;
+}
+
+/* ── Lecture des lignes saisies ────────────────────────────── */
+
+function lignes() {
+  return $("liens").value.split(/\r?\n/)
+    .map(l => l.trim()).filter(Boolean)
+    .map((l, i) => {
+      const sep = l.lastIndexOf("|");
+      const avecTitre = sep > 0 && /https?:\/\//.test(l.slice(sep + 1));
+      const titre = avecTitre ? l.slice(0, sep).trim() : "";
+      const lien = avecTitre ? l.slice(sep + 1).trim() : l;
+      return { titre: titre || ("KPI " + (i + 1)), lien: /https?:\/\//.test(lien) ? lien : "" };
+    });
+}
+
+function majCompte() {
+  const n = lignes().filter(l => l.lien).length;
+  $("compteLiens").textContent = n ? n + " lien(s) reconnu(s)" : "aucun lien";
+  $("btnGenerer").disabled = !n;
+}
+
+/* ── Production ────────────────────────────────────────────── */
+
+async function generer() {
+  const entrees = lignes().filter(l => l.lien);
+  if (!entrees.length) return;
+
+  const mode = $("mode").value;
+  $("btnGenerer").disabled = true;
+  $("etat").textContent = "génération…";
+  journal("Génération de " + entrees.length + " diapositive(s), mode « " + mode + " ».", true);
+
+  try {
+    const octets = await PptxDeck.construireDeck(octetsDuModele(), {
+      titre: $("titre").value, sousTitre: $("sousTitre").value, periode: $("periode").value,
+      diapos: entrees.map(e => ({
+        titre: e.titre, lien: e.lien, commentaire: "",
+        vivant: mode === "vivant" && !!e.lien
+      }))
+    });
+    dernierFichier = octets;
+    journal("Fichier produit : " + Math.round(octets.length / 1024) + " Ko.");
+    $("btnTelecharger").disabled = false;
+    $("etat").textContent = Math.round(octets.length / 1024) + " Ko";
+
+    journal("Relecture du fichier…");
+    const rapport = await InspecteurDeck.analyserDeck(octets);
+    afficher(rapport);
+    journal("Contrôle terminé : " + rapport.diapos.length + " diapositive(s), "
+            + (rapport.alertes || "aucune") + " remarque(s).");
+  } catch (err) {
+    journal("✗ " + err.message);
+    $("verdict").innerHTML = `<div class="verdict ko"><b>La génération a échoué</b>${esc(err.message)}</div>`;
+    $("etat").textContent = "échec";
+  } finally {
+    $("btnGenerer").disabled = false;
+  }
+}
+
+function afficher(rapport) {
+  const kpi = rapport.diapos.filter(d => d.contenu !== "couverture");
+  const vivants = kpi.filter(d => d.contenu === "visuel vivant").length;
+
+  $("verdict").innerHTML = rapport.alertes
+    ? `<div class="verdict att"><b>${rapport.diapos.length} diapositive(s) — ${rapport.alertes} point(s) à confirmer</b>
+       Les diapositives concernées sont marquées ci-dessous.</div>`
+    : `<div class="verdict ok"><b>${rapport.diapos.length} diapositive(s) — aucune anomalie</b>
+       Chaque diapositive pointe sur un visuel précis${vivants ? ", affiché par le complément Power BI" : ""}.</div>`;
+
+  $("diapos").innerHTML = rapport.diapos.map(d => {
+    if (d.contenu === "couverture") {
+      return `<div class="diapo"><div class="num">${d.numero}</div>
+        <div><b>Couverture</b><div class="meta">titre, sous-titre et période du support</div></div>
+        <span class="puce ok">modèle IDEA</span></div>`;
+    }
+    return `
+      <div class="diapo${d.alertes.length ? " att" : ""}">
+        <div class="num">${d.numero}</div>
+        <div>
+          <b>${esc(d.titre || "(sans titre)")}</b>
+          <div class="meta">
+            ${d.visuel ? `<span class="cle">visuel</span> ${esc(d.visuel)} · ` : ""}
+            ${d.page ? `<span class="cle">page</span> ${esc(d.page)} · ` : ""}
+            ${d.rapport ? `<span class="cle">rapport</span> ${esc(d.rapport)}<br>` : ""}
+            ${d.signet ? `<span class="cle">signet</span> ${esc(d.signet)} · ` : ""}
+            ${d.format ? `<span class="cle">format</span> ${esc(d.format)} · ` : ""}
+            ${d.cadre ? `<span class="cle">cadre</span> ${esc(d.cadre)}` : ""}
+          </div>
+          ${d.alertes.map(a => `<div class="note">⚠ ${esc(a)}</div>`).join("")}
+        </div>
+        <span class="puce ${d.alertes.length ? "att" : "ok"}">${esc(d.contenu)}</span>
+      </div>`;
+  }).join("");
+}
+
+function telecharger() {
+  if (!dernierFichier) return;
+  const blob = new Blob([dernierFichier], {
+    type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "test-generation.pptx";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  journal("Fichier téléchargé : test-generation.pptx");
+}
+
+/* ── Chargement d'un fichier de l'annuaire ─────────────────── */
+
+function chargerJson(texte) {
+  let d;
+  try { d = JSON.parse(texte); } catch (e) { journal("✗ fichier illisible"); return; }
+
+  let entrees = [];
+  if (Array.isArray(d.diapos)) {
+    entrees = d.diapos.map(x => ({ titre: x.titre, lien: x.lien }));
+    if (d.couverture) {
+      $("titre").value = d.couverture.titre || $("titre").value;
+      $("sousTitre").value = d.couverture.sousTitre || $("sousTitre").value;
+      $("periode").value = d.couverture.periode || $("periode").value;
+    }
+  } else {
+    const fiches = [].concat(d.manualEntries || [], d.personalEntries || []);
+    const cles = (d.sites || []).map(s => s && s.key).filter(Boolean);
+    const perimetres = cles.length ? cles : ["logistiport", "armement", "armateur", "global"];
+    fiches.forEach(k => perimetres.forEach(c => {
+      if (k && typeof k[c] === "string" && k[c]) {
+        entrees.push({ titre: (k.title || "KPI") + " " + c.toUpperCase().slice(0, 6), lien: k[c] });
+      }
+    }));
+  }
+
+  if (!entrees.length) { journal("✗ aucun lien trouvé dans ce fichier"); return; }
+  $("liens").value = entrees.map(e => e.titre + " | " + e.lien).join("\n");
+  majCompte();
+  journal(entrees.length + " lien(s) chargé(s) depuis le fichier.", true);
+}
+
+$("liens").addEventListener("input", majCompte);
+$("btnGenerer").addEventListener("click", generer);
+$("btnTelecharger").addEventListener("click", telecharger);
+$("btnVider").addEventListener("click", () => { $("liens").value = ""; majCompte(); });
+$("btnExemple").addEventListener("click", () => {
+  $("liens").value = EXEMPLES.map(e => e.titre + " | " + e.lien).join("\n");
+  majCompte();
+  journal(EXEMPLES.length + " lien(s) d'exemple chargés.", true);
+});
+$("btnFichier").addEventListener("click", () => $("fichier").click());
+$("fichier").addEventListener("change", function () {
+  const f = this.files && this.files[0];
+  this.value = "";
+  if (!f) return;
+  const lecteur = new FileReader();
+  lecteur.onload = () => chargerJson(String(lecteur.result));
+  lecteur.readAsText(f);
+});
+
+const parFormat = EXEMPLES.slice().sort((a, b) => {
+  const r = l => { const w = parseFloat((l.match(/[?&]width=([^&]*)/) || [])[1]) || 0,
+                         h = parseFloat((l.match(/[?&]height=([^&]*)/) || [])[1]) || 0;
+                   return h ? w / h : 99; };
+  return r(a.lien) - r(b.lien);
+});
+$("liens").value = parFormat.slice(0, 5).map(e => e.titre + " | " + e.lien).join("\n");
+majCompte();
+</script>

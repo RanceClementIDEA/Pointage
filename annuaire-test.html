@@ -3,10 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Annuaire KPI — IDEA</title>
+  <title>Annuaire KPI — copie d'essai</title>
+<style>
+/* Bannière de la copie d'essai */
+.essai-banniere {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 9px 18px; background: var(--gold-dim); color: var(--text-1);
+  border-bottom: 1px solid rgba(255,176,32,.35); font-size: 13px;
+}
+.essai-banniere b { color: var(--gold); letter-spacing: .02em; }
+.essai-banniere span { color: var(--text-2); }
+.essai-banniere code {
+  background: rgba(255,255,255,.08); border-radius: 4px; padding: 1px 6px;
+  font-family: ui-monospace, monospace; font-size: 12px; color: var(--text-1);
+}
+.essai-banniere a, .essai-banniere button {
+  background: rgba(255,255,255,.08); color: var(--text-1);
+  border: 1px solid var(--border); border-radius: 7px; padding: 5px 11px;
+  font-size: 12.5px; font-family: inherit; cursor: pointer; text-decoration: none;
+}
+.essai-banniere a { margin-left: auto; }
+.essai-banniere a:hover, .essai-banniere button:hover { background: rgba(255,255,255,.18); }
+</style>
 
   <!-- PWA : installation sur téléphone -->
-  <link rel="manifest" href="manifest.json">
+  
   <meta name="theme-color" content="#06202E">
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="icon" type="image/svg+xml" href="logo-annuaire.svg">
@@ -19,7 +40,101 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <script src="xlsx.full.min.js"></script>
+  <script>
+/* ══════════════════════════════════════════════════════════════
+   COPIE D'ESSAI — isolation de la production
+   Généré par outils/construire-annuaire-test.js. Ne pas modifier
+   à la main : relancer la commande après une évolution d'index.html.
+   ══════════════════════════════════════════════════════════════ */
+(function () {
+  "use strict";
+
+  var PREFIXE = "essai:";
+  var CODE_ESSAI = "idea-kpi-essai";
+
+  /* ── 1. Stockage préfixé ──────────────────────────────────
+     Les deux pages vivent sur la même origine et partagent donc
+     le même localStorage. Sans ce préfixe, l'essai écraserait
+     les vraies fiches. */
+  var vrai;
+  try { vrai = window.localStorage; } catch (e) { vrai = null; }
+
+  if (vrai) {
+    var clesEssai = function () {
+      var out = [];
+      for (var i = 0; i < vrai.length; i++) {
+        var k = vrai.key(i);
+        if (k && k.indexOf(PREFIXE) === 0) out.push(k);
+      }
+      return out;
+    };
+    var cloison = {
+      getItem: function (k) { return vrai.getItem(PREFIXE + k); },
+      setItem: function (k, v) { vrai.setItem(PREFIXE + k, v); },
+      removeItem: function (k) { vrai.removeItem(PREFIXE + k); },
+      clear: function () { clesEssai().forEach(function (k) { vrai.removeItem(k); }); },
+      key: function (i) { var k = clesEssai()[i]; return k === undefined ? null : k.slice(PREFIXE.length); },
+      get length() { return clesEssai().length; }
+    };
+    try {
+      Object.defineProperty(window, "localStorage", { configurable: true, get: function () { return cloison; } });
+    } catch (e) {
+      // Navigateur qui refuse la redéfinition : mieux vaut ne rien lancer
+      // que d'écrire dans les vraies données.
+      document.addEventListener("DOMContentLoaded", function () {
+        document.body.innerHTML = "<p style='font:16px system-ui;padding:40px;color:#0D2747'>" +
+          "Ce navigateur ne permet pas d'isoler la copie d'essai du stockage réel. " +
+          "Ouvrez plutôt l'annuaire de test dans une fenêtre de navigation privée.</p>";
+      });
+      return;
+    }
+  }
+
+  /* ── 2. Synchronisation sur un code dédié ─────────────────
+     kpiOptoutClearedV2 empêche l'application de réaligner cette
+     copie sur le code de production au démarrage. */
+  try {
+    if (!window.localStorage.getItem("kpiSyncConfig")) {
+      window.localStorage.setItem("kpiSyncConfig", JSON.stringify({
+        config: {
+          apiKey: "AIzaSyBEWADm3g2ab-vUP-sMlQfjpy_QuxhafXM",
+          authDomain: "annuaire-kpi.firebaseapp.com",
+          projectId: "annuaire-kpi",
+          storageBucket: "annuaire-kpi.firebasestorage.app",
+          messagingSenderId: "701786102556",
+          appId: "1:701786102556:web:9d831bd4efaf25e41778d9"
+        },
+        code: CODE_ESSAI,
+        enabled: true
+      }));
+    }
+    window.localStorage.setItem("kpiOptoutClearedV2", "1");
+    window.localStorage.removeItem("kpiSyncOptOut");
+  } catch (e) { /* stockage indisponible : la page reste utilisable */ }
+
+  /* ── 3. Pas d'enregistrement de service worker ────────────
+     Il partagerait sa portée, donc son cache, avec l'annuaire réel.
+     On neutralise l'enregistrement plutôt que l'objet lui-même :
+     l'application teste « serviceWorker in navigator » avant de
+     s'en servir, et retirer la propriété la ferait échouer plus loin. */
+  try {
+    if (navigator.serviceWorker && typeof navigator.serviceWorker.register === "function") {
+      navigator.serviceWorker.register = function () { return Promise.resolve(); };
+    }
+  } catch (e) { /* sans effet si le navigateur refuse : le cache reste commun */ }
+
+  /* ── Repartir de zéro, sans toucher à la production ─────── */
+  window.reinitialiserEssai = function () {
+    if (!confirm("Effacer les données de la copie d'essai sur CET appareil ?\n\n" +
+                 "L'annuaire réel et le document partagé ne sont pas touchés.")) return;
+    try { window.localStorage.clear(); } catch (e) { /* ignoré */ }
+    location.reload();
+  };
+
+  window.__CODE_ESSAI = CODE_ESSAI;
+})();
+</script>
+<script src="xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -161,6 +276,13 @@
 
   <!-- MAIN -->
   <div class="main-wrap">
+  <div class="essai-banniere">
+    <b>Copie d'essai</b>
+    <span>Stockage et synchronisation séparés — code <code>idea-kpi-essai</code>.
+    L'annuaire réel et le document de l'équipe ne sont jamais touchés.</span>
+    <a href="index.html">Aller à l'annuaire réel</a>
+    <button type="button" onclick="reinitialiserEssai()">Repartir de zéro</button>
+  </div>
 
     <!-- TOP BAR -->
     <div class="topbar">

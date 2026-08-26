@@ -1,0 +1,19 @@
+# Exécute les tests du moteur de fusion à chaque poussée.
+# Une régression y est bloquée AVANT d'atteindre GitHub Pages.
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Tests du moteur de fusion
+        run: node --test

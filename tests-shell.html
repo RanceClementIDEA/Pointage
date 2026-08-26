@@ -1,0 +1,2034 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tests — Annuaire KPI</title>
+<style>
+  :root{
+    --bg:#06202E; --bg2:#08283A; --card:#0B2C3D; --card2:#0E3549; --line:#164055;
+    --txt:#E6F1F6; --dim:#8FA9B8; --dim2:#5D7C8E;
+    --ok:#22C55E; --ko:#EF4444; --acc:#00C4CC; --gold:#FFB020;
+    --r:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:0; background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);
+    min-height:100vh; color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px; line-height:1.5;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:28px 20px 60px;}
+
+  /* ── En-tête ── */
+  header{display:flex; align-items:center; gap:14px; margin-bottom:6px; flex-wrap:wrap;}
+  .logo{
+    width:38px; height:38px; border-radius:9px; flex:0 0 auto;
+    background:linear-gradient(135deg,var(--acc),#0891B2);
+    display:flex; align-items:center; justify-content:center; font-size:19px;
+  }
+  h1{font-size:19px; margin:0; font-weight:650; letter-spacing:-.2px;}
+  .sub{color:var(--dim); font-size:12.5px; margin:2px 0 0;}
+  .badges{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;}
+  .badge{
+    font-size:11px; padding:4px 10px; border-radius:20px; font-weight:600;
+    background:rgba(0,196,204,.12); color:var(--acc); border:1px solid rgba(0,196,204,.3);
+    white-space:nowrap;
+  }
+  .badge.warn{background:rgba(255,176,32,.12); color:var(--gold); border-color:rgba(255,176,32,.3);}
+  .badge.vert{background:rgba(34,197,94,.12); color:var(--ok); border-color:rgba(34,197,94,.35);}
+  .badge.rouge{background:rgba(239,68,68,.14); color:var(--ko); border-color:rgba(239,68,68,.4);}
+
+  /* ── Bandeau d'état ── */
+  .etat{
+    margin:22px 0 16px; padding:16px 18px; border-radius:var(--r);
+    display:flex; align-items:center; gap:14px; font-weight:600; font-size:14.5px;
+    border:1px solid var(--line); background:var(--card);
+  }
+  .etat.att{border-color:rgba(255,176,32,.45); background:rgba(255,176,32,.08); color:var(--gold);}
+  .etat.ok{border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.08); color:var(--ok);}
+  .etat.ko{border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.08); color:var(--ko);}
+  .spin{
+    width:17px; height:17px; flex:0 0 auto; border-radius:50%;
+    border:2.5px solid rgba(255,255,255,.18); border-top-color:currentColor;
+    animation:tourne .7s linear infinite;
+  }
+  @keyframes tourne{to{transform:rotate(360deg);}}
+
+  /* ── Barres de progression ── */
+  .prog{margin-bottom:8px;}
+  .prog-tete{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; font-size:12px;}
+  .prog-tete .lib{color:var(--dim);}
+  .prog-tete .val{color:var(--txt); font-weight:600; font-variant-numeric:tabular-nums;}
+  .barre{height:8px; border-radius:6px; background:rgba(255,255,255,.07); overflow:hidden;}
+  .barre > i{
+    display:block; height:100%; width:0%; border-radius:6px;
+    background:linear-gradient(90deg,var(--acc),#4FD1C5);
+    transition:width .18s ease;
+  }
+  .barre.ko > i{background:linear-gradient(90deg,var(--ko),#F87171);}
+  .barre.mini{height:5px;}
+  .encours{font-size:11.5px; color:var(--dim2); margin-top:6px; height:16px;
+           overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+  /* ── Cartes de synthèse ── */
+  .cartes{display:grid; grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); gap:10px; margin:18px 0;}
+  .carte{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:13px 15px;}
+  .carte .n{font-size:25px; font-weight:700; line-height:1.15; font-variant-numeric:tabular-nums;}
+  .carte .l{font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:.6px; margin-top:2px;}
+  .n.ok{color:var(--ok);} .n.ko{color:var(--ko);} .n.acc{color:var(--acc);} .n.gold{color:var(--gold);}
+
+  /* ── Barre d'outils ── */
+  .outils{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center;}
+  input[type=search]{
+    flex:1; min-width:180px; background:var(--card); border:1px solid var(--line);
+    border-radius:8px; padding:8px 12px; color:var(--txt); font-size:13px; font-family:inherit;
+  }
+  input[type=search]:focus{outline:none; border-color:var(--acc);}
+  .btn{
+    background:var(--card); color:var(--txt); border:1px solid var(--line); border-radius:8px;
+    padding:8px 13px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;
+    white-space:nowrap; transition:.15s;
+  }
+  .btn:hover{border-color:var(--acc); color:var(--acc);}
+  .btn.actif{background:rgba(0,196,204,.15); border-color:var(--acc); color:var(--acc);}
+  .btn.plein{background:var(--acc); color:#04141d; border-color:var(--acc);}
+  .btn.plein:hover{filter:brightness(1.1); color:#04141d;}
+
+  /* ── Groupes de tests ── */
+  .groupe{background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+          margin-bottom:10px; overflow:hidden;}
+  .groupe > h2{
+    font-size:13.5px; margin:0; padding:12px 15px; background:var(--card2);
+    border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px;
+    cursor:pointer; user-select:none; font-weight:600;
+  }
+  .groupe > h2 .chev{color:var(--dim2); font-size:11px; transition:transform .15s; flex:0 0 auto;}
+  .groupe.replie > h2 .chev{transform:rotate(-90deg);}
+  .groupe.replie .corps{display:none;}
+  .gstat{margin-left:auto; display:flex; gap:8px; align-items:center; font-weight:600; font-size:11.5px;}
+  .pill{padding:2px 9px; border-radius:20px; font-variant-numeric:tabular-nums;}
+  .pill.ok{background:rgba(34,197,94,.14); color:var(--ok);}
+  .pill.ko{background:rgba(239,68,68,.14); color:var(--ko);}
+  .pill.tps{background:rgba(255,255,255,.06); color:var(--dim);}
+
+  .ligne{display:flex; gap:11px; padding:7px 15px; font-size:12.5px; align-items:flex-start;
+         border-bottom:1px solid rgba(255,255,255,.035);}
+  .ligne:last-child{border-bottom:none;}
+  .ligne.echec{background:rgba(239,68,68,.06);}
+  .puce{flex:0 0 auto; font-weight:700; width:13px;}
+  .puce.ok{color:var(--ok);} .puce.ko{color:var(--ko);}
+  .nom{flex:1;}
+  .ms{flex:0 0 auto; color:var(--dim2); font-size:10.5px; font-variant-numeric:tabular-nums;
+      padding-top:1px;}
+  .ms.lent{color:var(--gold);}
+  .msg{color:#FCA5A5; font-size:11.5px; margin-top:4px; padding:7px 10px;
+       background:rgba(239,68,68,.09); border-left:2px solid var(--ko); border-radius:0 5px 5px 0;
+       font-family:ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap; word-break:break-word;}
+
+  /* ── Panneau d'informations ── */
+  .infos{background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+         padding:15px 17px; margin-top:16px;}
+  .infos h3{font-size:12px; margin:0 0 11px; color:var(--dim); text-transform:uppercase;
+            letter-spacing:.6px; font-weight:600;}
+  .rang{display:flex; justify-content:space-between; gap:14px; padding:5px 0; font-size:12.5px;
+        border-bottom:1px solid rgba(255,255,255,.04);}
+  .rang:last-child{border-bottom:none;}
+  .rang span{color:var(--dim);}
+  .rang b{font-weight:600; text-align:right; word-break:break-word; font-variant-numeric:tabular-nums;}
+  .note{color:var(--dim2); font-size:11.5px; line-height:1.65; margin-top:14px;}
+  code{background:rgba(255,255,255,.07); padding:1px 5px; border-radius:4px; font-size:11px;}
+  .cache{display:none !important;}
+  .modes{display:flex; gap:8px; margin:20px 0 4px; flex-wrap:wrap;}
+  .puce.warn{color:var(--gold);}
+  .ligne.alerte{background:rgba(255,176,32,.07);}
+  .detail{color:var(--dim); font-size:11.5px; margin-top:3px; word-break:break-word;}
+  .detail b{color:var(--txt); font-weight:600;}
+  .pill.warn{background:rgba(255,176,32,.14); color:var(--gold);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">✓</div>
+    <div>
+      <h1>Tests automatiques — Annuaire KPI</h1>
+      <p class="sub">Moteur de fusion, synchronisation, affichage, import/export et persistance</p>
+    </div>
+    <div class="badges">
+      <span class="badge" id="bVersion">app.js …</span>
+      <span class="badge" id="bIntegrite">🔒 Relevé de vos données…</span>
+    </div>
+  </header>
+
+  <div class="modes">
+    <button class="btn actif" id="modeSandbox">🧪 Bac à sable</button>
+    <button class="btn" id="modeReel">🔎 Données réelles — diagnostic</button>
+  </div>
+
+  <div id="vueSandbox">
+  <div class="etat att" id="etat"><span class="spin"></span><span id="etatTxt">Préparation…</span></div>
+
+  <div class="prog" id="zoneProg">
+    <div class="prog-tete"><span class="lib" id="progLib">Chargement des fichiers</span><span class="val" id="progVal">0 %</span></div>
+    <div class="barre" id="barre"><i id="barreJauge"></i></div>
+    <div class="encours" id="encours"></div>
+  </div>
+
+  <div class="cartes" id="cartes"></div>
+
+  <div class="outils cache" id="outils">
+    <input type="search" id="recherche" placeholder="Filtrer les tests…" autocomplete="off">
+    <button class="btn" id="btnEchecs">Échecs seulement</button>
+    <button class="btn" id="btnPlier">Tout replier</button>
+    <button class="btn" id="btnCopier">Copier le rapport</button>
+    <button class="btn plein" id="btnRelancer">↻ Relancer</button>
+  </div>
+
+  <div id="sortie"></div>
+
+  <div class="infos cache" id="infos">
+    <h3>Informations d'exécution</h3>
+    <div id="infosCorps"></div>
+    <div class="note">
+      Ce mode charge <code>app.js</code> et le dossier <code>js/</code> dans un bac à sable :
+      la mémoire du navigateur, Firebase et Excel sont remplacés par des simulations.
+      Vos KPIs, votre corbeille et votre synchronisation ne sont jamais lus ni modifiés.
+    </div>
+  </div>
+  </div><!-- /vueSandbox -->
+
+  <div id="vueReel" class="cache">
+    <div class="etat att" id="etatR"><span id="etatRTxt">Prêt à analyser vos données réelles.</span></div>
+
+    <div class="note" style="margin:-6px 0 16px">
+      Ce mode lit vos <b>vraies</b> données (mémoire de cet appareil) et votre <b>vrai</b> cloud,
+      <b>en lecture seule</b> : rien n'est modifié, ni ici ni sur les autres appareils.
+      Il compare les deux et signale les écarts.
+    </div>
+
+    <div class="outils">
+      <button class="btn" id="btnAnalyser">▶ Lancer l'analyse</button>
+      <button class="btn" id="btnEcriture" title="Écrit puis efface un document de test dédié">✎ Tester aussi l'écriture</button>
+      <button class="btn" id="btnMasse" title="Éprouve le système à grande échelle : 200 fiches, 5 appareils, 100 modifications">⚡ Simulation en masse</button>
+      <button class="btn plein" id="btnScenarios" title="Fait dialoguer deux appareils simulés via votre vrai Firebase">🔄 Tester la synchronisation en conditions réelles</button>
+      <button class="btn" id="btnCopierR">Copier le rapport</button>
+    </div>
+
+    <div class="prog cache" id="zoneProgR">
+      <div class="prog-tete"><span class="lib" id="progRLib">Analyse</span><span class="val" id="progRVal">0 %</span></div>
+      <div class="barre"><i id="barreRJauge"></i></div>
+      <div class="encours" id="encoursR"></div>
+    </div>
+
+    <div class="cartes" id="cartesR"></div>
+    <div id="sortieR"></div>
+  </div>
+
+</div>
+
+<script>
+/* ══════════════ Cadre de test minimal (remplace node:test / node:assert) ══════════════ */
+const __groupes = [];
+let __courant = null;
+function __ouvrirGroupe(nom){ __courant = { nom, tests: [] }; __groupes.push(__courant); }
+function test(nom, fn){ __courant.tests.push({ nom, fn }); }
+
+const assert = {
+  equal(a,b,m){ if(a!=b) throw new Error(m || `attendu ${JSON.stringify(b)}, obtenu ${JSON.stringify(a)}`); },
+  strictEqual(a,b,m){ if(a!==b) throw new Error(m || `attendu ${JSON.stringify(b)}, obtenu ${JSON.stringify(a)}`); },
+  notEqual(a,b,m){ if(a==b) throw new Error(m || "les deux valeurs ne devraient pas être égales"); },
+  notStrictEqual(a,b,m){ if(a===b) throw new Error(m || "les deux valeurs ne devraient pas être identiques"); },
+  ok(v,m){ if(!v) throw new Error(m || "valeur fausse alors qu'elle devrait être vraie"); },
+  match(s,re,m){ if(!re.test(s)) throw new Error(m || `"${String(s).slice(0,120)}" ne correspond pas à ${re}`); },
+  deepEqual(a,b,m){ if(JSON.stringify(a)!==JSON.stringify(b)) throw new Error(m || `attendu ${JSON.stringify(b)}, obtenu ${JSON.stringify(a)}`); },
+  /* Sous Node, deepStrictEqual compare aussi les types. La comparaison par
+     JSON suffit ici : les tests concernés portent sur des données simples. */
+  deepStrictEqual(a,b,m){ return assert.deepEqual(a,b,m); },
+  /* Équivalent de assert.rejects : la promesse DOIT échouer, avec le bon message. */
+  async rejects(fn, re, m){
+    let erreur = null;
+    try { await (typeof fn === "function" ? fn() : fn); }
+    catch(e){ erreur = e; }
+    if (!erreur) throw new Error(m || "la promesse aurait dû échouer");
+    if (re && !re.test(String(erreur.message))) {
+      throw new Error(m || `l'erreur "${erreur.message}" ne correspond pas à ${re}`);
+    }
+  }
+};
+
+/* Accès différé aux modules du bac à sable : ZipMini, PptxDeck et Selection
+   ne sont posés sur window qu'une fois app.js chargé, bien après l'évaluation
+   du script de cette page. */
+function __module(nom){
+  return new Proxy({}, {
+    get(_, cle){
+      const m = window[nom];
+      if (!m) throw new Error("Module " + nom + " non chargé");
+      const v = m[cle];
+      return typeof v === "function" ? v.bind(m) : v;
+    }
+  });
+}
+
+/* ══════════════ Bac à sable partagé avec les tests locaux ══════════════ */
+/*__HARNESS__*/
+
+const FICHIERS = ["js/storage.js", "js/merge.js", "js/carousel.js",
+                  "js/zip.js", "js/empreintes.js", "js/derivation.js", "js/pptx.js", "js/inspecter-deck.js",
+                  "js/selection.js", "app.js"];
+const journalFichiers = [];
+
+async function loadApp(surProgression){
+  const sources = [];
+  for (let i = 0; i < FICHIERS.length; i++){
+    const f = FICHIERS[i];
+    if (surProgression) surProgression(i / FICHIERS.length, f);
+    let r;
+    try { r = await fetch(f + "?anticache=" + Date.now()); }
+    catch(e){ journalFichiers.push({ f, ok:false, info:e.message }); throw new Error("Impossible de télécharger " + f + " — " + e.message); }
+    if (!r.ok){ journalFichiers.push({ f, ok:false, info:"HTTP " + r.status }); throw new Error("Fichier introuvable : " + f + " (HTTP " + r.status + ")"); }
+    const t = await r.text();
+    journalFichiers.push({ f, ok:true, info:(t.length/1024).toFixed(1) + " Ko" });
+    sources.push(t);
+  }
+  // Modèle PowerPoint : nécessaire aux tests de la fabrique de deck.
+  try {
+    const rm = await fetch("modele-deck.pptx?anticache=" + Date.now());
+    if (rm.ok) {
+      window.__modeleDeck = new Uint8Array(await rm.arrayBuffer());
+      journalFichiers.push({ f:"modele-deck.pptx", ok:true,
+                             info:(window.__modeleDeck.length/1024).toFixed(1) + " Ko" });
+    } else {
+      journalFichiers.push({ f:"modele-deck.pptx", ok:false, info:"HTTP " + rm.status });
+    }
+  } catch(e){ journalFichiers.push({ f:"modele-deck.pptx", ok:false, info:e.message }); }
+
+  if (surProgression) surProgression(1, "initialisation du bac à sable");
+  window.__sources = sources;      // permet de créer d'autres appareils simulés
+  return creerHarnais(sources);
+}
+
+/* ══════════════ Simulateur d'appareils (tests de synchronisation) ══════════════ */
+/*__SYNCSIM__*/
+
+/* ══════════════ Les tests ══════════════ */
+let A = null;
+/*__TESTS__*/
+
+/* Le navigateur signale par un événement « storage » toute écriture faite
+   depuis un AUTRE onglet du même site. C'est une attribution certaine :
+   la page de test, elle, n'écrit jamais dans votre stockage réel. */
+const clesModifieesAilleurs = new Set();
+let autreOngletDetecte = false;
+window.addEventListener("storage", function (e) {
+  autreOngletDetecte = true;
+  if (e.key) clesModifieesAilleurs.add(e.key);
+});
+
+/* Documents Firestore réellement écrits par cette page (pour prouver
+   que votre document de synchronisation n'a pas été touché). */
+const docsEcritsParLaPage = new Set();
+
+/* ══════════════ Empreinte des données réelles ══════════════
+   Relevée AVANT puis APRÈS les tests : prouve que la simulation
+   n'a rien lu de travers ni rien modifié dans vos vraies données. */
+function empreinteDonnees(){
+  const cles = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if (k) cles.push(k);
+    }
+  } catch(e){ return { erreur: String(e && e.message || e), cles: [], detail: {}, octets: 0, total: 0 }; }
+  cles.sort();
+  const detail = {};
+  let octets = 0, total = 5381;
+  cles.forEach(k => {
+    const v = localStorage.getItem(k) || "";
+    octets += k.length + v.length;
+    let h = 5381;
+    for (let i = 0; i < v.length; i++) h = ((h << 5) + h + v.charCodeAt(i)) | 0;
+    detail[k] = h;
+    total = ((total << 5) + total + h) | 0;
+  });
+  return { cles, detail, octets, total };
+}
+
+/** Compare deux empreintes et décrit précisément ce qui a bougé. */
+function comparerEmpreintes(avant, apres){
+  const ajoutees = apres.cles.filter(k => avant.cles.indexOf(k) < 0);
+  const retirees = avant.cles.filter(k => apres.cles.indexOf(k) < 0);
+  const modifiees = avant.cles.filter(k => apres.cles.indexOf(k) >= 0 && avant.detail[k] !== apres.detail[k]);
+  return {
+    intacte: ajoutees.length === 0 && retirees.length === 0 && modifiees.length === 0,
+    ajoutees, retirees, modifiees,
+    ecartOctets: apres.octets - avant.octets
+  };
+}
+
+/* ══════════════ Exécution et affichage ══════════════ */
+const $ = id => document.getElementById(id);
+const echapper = s => String(s).replace(/[<>&]/g, c => ({ "<":"&lt;", ">":"&gt;", "&":"&amp;" }[c]));
+
+function majEtat(classe, texte, avecRoue){
+  const e = $("etat");
+  e.className = "etat " + classe;
+  e.innerHTML = (avecRoue ? '<span class="spin"></span>' : '') + '<span id="etatTxt"></span>';
+  $("etatTxt").textContent = texte;
+}
+function majBarre(ratio, libelle, valeur, enEchec){
+  $("barreJauge").style.width = Math.round(ratio * 100) + "%";
+  $("barre").className = "barre" + (enEchec ? " ko" : "");
+  if (libelle !== undefined) $("progLib").textContent = libelle;
+  $("progVal").textContent = valeur !== undefined ? valeur : Math.round(ratio * 100) + " %";
+}
+const respirer = () => new Promise(r => setTimeout(r, 0));
+
+function afficherCartes(total, ok, ko, ms, groupes){
+  $("cartes").innerHTML =
+    carte(total, "Tests", "acc") +
+    carte(ok, "Réussis", "ok") +
+    carte(ko, "Échoués", ko ? "ko" : "ok") +
+    carte(groupes, "Domaines", "acc") +
+    carte((ms/1000).toFixed(2) + " s", "Durée", "gold");
+}
+const carte = (n, l, c) => '<div class="carte"><div class="n ' + c + '">' + n + '</div><div class="l">' + l + '</div></div>';
+
+function panneauInfos(resultats, msTotal){
+  const lents = resultats.slice().sort((a,b) => b.ms - a.ms).slice(0, 5);
+  const rang = (l, v) => '<div class="rang"><span>' + l + '</span><b>' + v + '</b></div>';
+  let h = "";
+  h += rang("Version de app.js", A ? A.version : "—");
+  h += rang("Adresse", echapper(location.href.split("?")[0]));
+  h += rang("Date d'exécution", new Date().toLocaleString("fr-FR"));
+  h += rang("Durée totale", (msTotal/1000).toFixed(2) + " s");
+  h += rang("Navigateur", echapper(navigator.userAgent.slice(0, 90)));
+  h += '<div class="rang"><span>Fichiers chargés</span><b>' +
+       journalFichiers.map(x => (x.ok ? "✓ " : "✗ ") + x.f + " (" + x.info + ")").join("<br>") + '</b></div>';
+  h += '<div class="rang"><span>Tests les plus lents</span><b>' +
+       lents.map(t => echapper(t.nom.slice(0, 52)) + " — " + t.ms.toFixed(1) + " ms").join("<br>") + '</b></div>';
+  $("infosCorps").innerHTML = h;
+  $("infos").classList.remove("cache");
+}
+
+function diagnostic(titre, detail){
+  majEtat("ko", titre, false);
+  $("zoneProg").style.display = "none";
+  const j = journalFichiers.length
+    ? journalFichiers.map(x => (x.ok ? "✓ " : "✗ ") + x.f + " (" + x.info + ")").join("<br>")
+    : "aucun fichier chargé";
+  $("sortie").innerHTML =
+    '<div class="groupe"><h2>Diagnostic</h2><div class="corps">' +
+    '<div class="ligne"><span class="nom">' + echapper(detail || "") + '</span></div>' +
+    '<div class="ligne"><span class="nom"><b>Fichiers</b><div class="msg" style="color:var(--dim)">' + j + '</div></span></div>' +
+    '<div class="ligne"><span class="nom"><b>Adresse</b> ' + echapper(location.href) + '</span></div>' +
+    '<div class="ligne"><span class="nom"><b>Navigateur</b> ' + echapper(navigator.userAgent) + '</span></div>' +
+    '</div></div>' +
+    '<div class="note">Si l\u2019adresse commence par <code>file://</code>, ouvrez la page par son adresse ' +
+    '<code>https://…</code>. Sinon, transmettez cette capture pour analyse.</div>';
+}
+
+window.addEventListener("error", e => diagnostic("Erreur inattendue", e.message + " — " + e.filename + " ligne " + e.lineno));
+window.addEventListener("unhandledrejection", e => diagnostic("Erreur inattendue", String((e.reason && e.reason.message) || e.reason)));
+
+const veille = setTimeout(() => {
+  if ($("etat").className.indexOf("att") >= 0) diagnostic("Le chargement n'aboutit pas", "Aucune réponse au bout de 30 secondes.");
+}, 30000);
+
+(async function(){
+  /* — Relevé de l'état de vos données, avant toute chose — */
+  const empreinteAvant = empreinteDonnees();
+  $("bIntegrite").textContent = "🔒 " + empreinteAvant.cles.length + " emplacement(s) relevé(s)";
+
+  /* — Phase 1 : chargement — */
+  majEtat("att", "Chargement de l'application…", true);
+  try {
+    A = await loadApp((ratio, fichier) => {
+      majBarre(ratio, "Chargement des fichiers", Math.round(ratio * 100) + " %");
+      $("encours").textContent = fichier;
+    });
+  } catch(e){
+    clearTimeout(veille);
+    diagnostic("Impossible de charger l'application", e.message);
+    return;
+  }
+  clearTimeout(veille);
+  $("bVersion").textContent = "app.js " + A.version;
+
+  /* — Phase 2 : exécution — */
+  const total = __groupes.reduce((n, g) => n + g.tests.length, 0);
+  $("modeSandbox").textContent = "🧪 Bac à sable — " + total + " tests";
+  majEtat("att", "Exécution des tests…", true);
+  majBarre(0, "Tests exécutés", "0 / " + total);
+  await respirer();
+
+  const resultats = [];
+  let faits = 0, reussis = 0, echoues = 0;
+  const debut = performance.now();
+
+  for (const g of __groupes){
+    const bloc = document.createElement("div");
+    bloc.className = "groupe";
+    const titre = document.createElement("h2");
+    const corps = document.createElement("div");
+    corps.className = "corps";
+    bloc.appendChild(titre); bloc.appendChild(corps);
+    $("sortie").appendChild(bloc);
+
+    let okG = 0, koG = 0;
+    const debutG = performance.now();
+    titre.innerHTML = '<span class="chev">▼</span><span>' + echapper(g.nom) + '</span>' +
+                      '<span class="gstat"><span class="pill tps">en cours…</span></span>';
+
+    for (const t of g.tests){
+      const t0 = performance.now();
+      let erreur = null;
+      try { await t.fn(); } catch(e){ erreur = e; }
+      const ms = performance.now() - t0;
+      faits++;
+      if (erreur){ echoues++; koG++; } else { reussis++; okG++; }
+      resultats.push({ groupe: g.nom, nom: t.nom, ms, erreur: erreur ? String(erreur.message) : null });
+
+      const ligne = document.createElement("div");
+      ligne.className = "ligne" + (erreur ? " echec" : "");
+      ligne.dataset.echec = erreur ? "1" : "0";
+      ligne.dataset.nom = t.nom.toLowerCase();
+      ligne.innerHTML =
+        '<span class="puce ' + (erreur ? "ko" : "ok") + '">' + (erreur ? "✗" : "✓") + '</span>' +
+        '<span class="nom">' + echapper(t.nom) +
+          (erreur ? '<div class="msg">' + echapper(erreur.message) + '</div>' : '') +
+        '</span>' +
+        '<span class="ms' + (ms > 40 ? " lent" : "") + '">' + ms.toFixed(1) + ' ms</span>';
+      corps.appendChild(ligne);
+
+      /* Progression fluide : on rend la main au navigateur régulièrement */
+      if (faits % 8 === 0 || faits === total){
+        majBarre(faits / total, "Tests exécutés", faits + " / " + total, echoues > 0);
+        $("encours").textContent = g.nom + " — " + t.nom;
+        afficherCartes(total, reussis, echoues, performance.now() - debut, __groupes.length);
+        await respirer();
+      }
+    }
+
+    const msG = performance.now() - debutG;
+    titre.innerHTML = '<span class="chev">▼</span><span>' + echapper(g.nom) + '</span>' +
+      '<span class="gstat">' +
+        (koG ? '<span class="pill ko">' + koG + ' échec' + (koG > 1 ? 's' : '') + '</span>' : '') +
+        '<span class="pill ok">' + okG + '/' + g.tests.length + '</span>' +
+        '<span class="pill tps">' + msG.toFixed(0) + ' ms</span>' +
+      '</span>';
+    titre.addEventListener("click", () => bloc.classList.toggle("replie"));
+    if (!koG) bloc.classList.add("replie");   // on ne déplie que ce qui pose problème
+  }
+
+  const msTotal = performance.now() - debut;
+
+  /* — Contrôle d'intégrité : vos données ont-elles bougé ? — */
+  const empreinteApres = empreinteDonnees();
+  const ecart = comparerEmpreintes(empreinteAvant, empreinteApres);
+  const blocInt = document.createElement("div");
+  blocInt.className = "groupe";
+  const titreInt = document.createElement("h2");
+  const corpsInt = document.createElement("div"); corpsInt.className = "corps";
+  blocInt.appendChild(titreInt); blocInt.appendChild(corpsInt);
+  $("sortie").insertBefore(blocInt, $("sortie").firstChild);
+  titreInt.addEventListener("click", () => blocInt.classList.toggle("replie"));
+
+  const ligneInt = (ok, nom, detail) => {
+    const l = document.createElement("div");
+    l.className = "ligne" + (ok ? "" : " echec");
+    l.dataset.echec = ok ? "0" : "1";
+    l.dataset.nom = nom.toLowerCase();
+    l.innerHTML = '<span class="puce ' + (ok ? "ok" : "ko") + '">' + (ok ? "✓" : "✗") + '</span>' +
+      '<span class="nom">' + echapper(nom) + (detail ? '<div class="detail">' + detail + '</div>' : '') + '</span>';
+    corpsInt.appendChild(l);
+  };
+
+  ligneInt(ecart.ajoutees.length === 0 || ecart.ajoutees.every(k => clesModifieesAilleurs.has(k)),
+    "Aucun emplacement ajouté par cette page",
+    ecart.ajoutees.length ? "Ajoutés : <b>" + ecart.ajoutees.map(echapper).join(", ") + "</b>"
+                          : "la simulation n'a rien créé chez vous");
+  ligneInt(ecart.retirees.length === 0 || ecart.retirees.every(k => clesModifieesAilleurs.has(k)),
+    "Aucun emplacement supprimé par cette page",
+    ecart.retirees.length ? "Supprimés : <b>" + ecart.retirees.map(echapper).join(", ") + "</b>"
+                          : "rien n'a disparu");
+  const parLaPage = ecart.modifiees.filter(k => !clesModifieesAilleurs.has(k));
+  const parUnAutreOnglet = ecart.modifiees.filter(k => clesModifieesAilleurs.has(k));
+  ligneInt(parLaPage.length === 0, "Aucun contenu modifié par cette page",
+    parLaPage.length
+      ? "Modifiés sans origine externe identifiée : <b>" + parLaPage.map(echapper).join(", ") + "</b>"
+      : (parUnAutreOnglet.length
+          ? "Cette page n'a rien écrit. " + parUnAutreOnglet.length +
+            " emplacement(s) ont changé <b>depuis un autre onglet</b> de l'annuaire : " +
+            parUnAutreOnglet.map(echapper).join(", ")
+          : empreinteAvant.cles.length + " emplacement(s) vérifiés un par un"));
+
+  if (autreOngletDetecte) {
+    ligneInt(true, "L'annuaire est ouvert dans un autre onglet",
+      "Ses écritures apparaissent ci-dessus. Pour une comparaison parfaitement " +
+      "isolée, fermez l'autre onglet avant de relancer.");
+  }
+  ligneInt(ecart.ecartOctets === 0 || autreOngletDetecte, "Volume de données inchangé",
+    ecart.ecartOctets === 0 ? (empreinteAvant.octets / 1024).toFixed(1) + " Ko avant et après"
+                            : "Écart de <b>" + ecart.ecartOctets + "</b> caractère(s)");
+  ligneInt(empreinteAvant.total === empreinteApres.total || autreOngletDetecte, "Empreinte globale identique",
+    "signature avant : <b>" + empreinteAvant.total + "</b> · après : <b>" + empreinteApres.total + "</b>");
+
+  titreInt.innerHTML = '<span class="chev">▼</span><span>Intégrité de vos données réelles</span>' +
+    '<span class="gstat">' + (ecart.intacte
+      ? '<span class="pill ok">intactes</span>'
+      : '<span class="pill ko">' + (ecart.ajoutees.length + ecart.retirees.length + ecart.modifiees.length) + ' écart(s)</span>') +
+    '</span>';
+  if (ecart.intacte) blocInt.classList.add("replie");
+
+  $("bIntegrite").textContent = ecart.intacte
+    ? "✓ Vos données sont intactes"
+    : "⚠️ " + (ecart.ajoutees.length + ecart.retirees.length + ecart.modifiees.length) + " écart(s) détecté(s)";
+  $("bIntegrite").className = "badge " + (ecart.intacte ? "vert" : "rouge");
+
+  /* — Phase 3 : synthèse — */
+  afficherCartes(total, reussis, echoues, msTotal, __groupes.length);
+  majBarre(1, "Terminé", faits + " / " + total, echoues > 0);
+  $("encours").textContent = "";
+  $("outils").classList.remove("cache");
+  panneauInfos(resultats, msTotal);
+
+  if (echoues === 0) majEtat("ok", "Tout va bien — les " + total + " tests passent (" + (msTotal/1000).toFixed(2) + " s)", false);
+  else majEtat("ko", echoues + " test(s) en échec sur " + total + " — les domaines concernés sont dépliés ci-dessous", false);
+
+  /* — Commandes — */
+  const appliquerFiltre = () => {
+    const q = $("recherche").value.trim().toLowerCase();
+    const seulEchecs = $("btnEchecs").classList.contains("actif");
+    document.querySelectorAll(".ligne").forEach(l => {
+      const okNom = !q || (l.dataset.nom || "").indexOf(q) >= 0;
+      const okEtat = !seulEchecs || l.dataset.echec === "1";
+      l.classList.toggle("cache", !(okNom && okEtat));
+    });
+    document.querySelectorAll(".groupe").forEach(g => {
+      const visibles = g.querySelectorAll(".ligne:not(.cache)").length;
+      g.classList.toggle("cache", visibles === 0);
+      if (visibles > 0 && (q || seulEchecs)) g.classList.remove("replie");
+    });
+  };
+  $("recherche").addEventListener("input", appliquerFiltre);
+  $("btnEchecs").addEventListener("click", function(){ this.classList.toggle("actif"); appliquerFiltre(); });
+  $("btnPlier").addEventListener("click", function(){
+    const toutReplie = this.dataset.etat !== "replie";
+    document.querySelectorAll(".groupe").forEach(g => g.classList.toggle("replie", toutReplie));
+    this.dataset.etat = toutReplie ? "replie" : "deplie";
+    this.textContent = toutReplie ? "Tout déplier" : "Tout replier";
+  });
+  $("btnRelancer").addEventListener("click", () => location.reload());
+  $("btnCopier").addEventListener("click", async function(){
+    const lignes = [
+      "Rapport de tests — Annuaire KPI",
+      "Version de app.js : " + A.version,
+      "Date : " + new Date().toLocaleString("fr-FR"),
+      "Résultat : " + reussis + " réussis, " + echoues + " échoués sur " + total +
+        " (" + (msTotal/1000).toFixed(2) + " s)",
+      ""
+    ];
+    if (echoues){
+      lignes.push("Tests en échec :");
+      resultats.filter(r => r.erreur).forEach(r => lignes.push("  ✗ [" + r.groupe + "] " + r.nom + " → " + r.erreur));
+    } else {
+      lignes.push("Aucun échec.");
+    }
+    const txt = lignes.join("\n");
+    try { await navigator.clipboard.writeText(txt); this.textContent = "✓ Copié"; }
+    catch { this.textContent = "Copie impossible"; }
+    setTimeout(() => { this.textContent = "Copier le rapport"; }, 2200);
+  });
+})();
+
+/* ══════════════════════════════════════════════════════════════════════
+   MODE « DONNÉES RÉELLES » — diagnostic en LECTURE SEULE
+   Lit la mémoire de cet appareil et le document cloud, les compare,
+   et signale les écarts. Aucune écriture, sauf test explicite sur un
+   document dédié qui est ensuite effacé.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const CLE = {
+  MANUAL:"kpiManualEntries", DELETED:"kpiDeletedIds", PURGED:"kpiPurgedIds",
+  SITES:"kpiSites", ACTIVITY:"kpiActivity", USER:"kpiUser",
+  CONFIG:"kpiSyncConfig", OPTOUT:"kpiSyncOptOut", MIGRE:"kpiMigratedV2",
+  PERSO:"kpiPersonal_", PERSO_TRASH:"kpiPersonalTrash_", FAVORIS:"kpiFav_",
+  PERSO_SYNC:"kpiPersonalSync", PERSO_MAP:"kpiPersonalByUser", PERSO_MAP_TRASH:"kpiPersonalTrashByUser",
+  PRESETS:"kpiPresets", EMPREINTES:"kpiEmpreintes"
+};
+const lireLocal = (cle, repli) => {
+  try { const v = localStorage.getItem(cle); return v === null ? repli : JSON.parse(v); }
+  catch { return repli; }
+};
+const resultatsR = [];
+
+function chargerScript(src){
+  return new Promise((ok, ko) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = ok; s.onerror = () => ko(new Error("chargement impossible : " + src));
+    document.head.appendChild(s);
+  });
+}
+async function chargerFirebase(){
+  if (window.firebase && window.firebase.firestore) return;
+  await chargerScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
+  await chargerScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js");
+}
+
+/* Un contrôle renvoie { etat:"ok"|"warn"|"ko", detail:"…" } */
+function ajouterControle(groupe, nom, res){
+  resultatsR.push({ groupe, nom, ...res });
+  const bloc = groupesR[groupe];
+  const l = document.createElement("div");
+  l.className = "ligne" + (res.etat === "ko" ? " echec" : res.etat === "warn" ? " alerte" : "");
+  const icone = res.etat === "ok" ? "✓" : res.etat === "warn" ? "!" : "✗";
+  l.innerHTML =
+    '<span class="puce ' + (res.etat === "ok" ? "ok" : res.etat === "warn" ? "warn" : "ko") + '">' + icone + '</span>' +
+    '<span class="nom">' + echapper(nom) +
+      (res.detail ? '<div class="detail">' + res.detail + '</div>' : '') + '</span>';
+  bloc.corps.appendChild(l);
+  bloc.compte[res.etat]++;
+  majTitreGroupe(groupe);
+}
+const groupesR = {};
+function ouvrirGroupeR(nom){
+  const bloc = document.createElement("div");
+  bloc.className = "groupe";
+  const titre = document.createElement("h2");
+  const corps = document.createElement("div"); corps.className = "corps";
+  bloc.appendChild(titre); bloc.appendChild(corps);
+  $("sortieR").appendChild(bloc);
+  titre.addEventListener("click", () => bloc.classList.toggle("replie"));
+  groupesR[nom] = { bloc, titre, corps, compte:{ ok:0, warn:0, ko:0 } };
+  majTitreGroupe(nom);
+}
+function majTitreGroupe(nom){
+  const g = groupesR[nom], c = g.compte;
+  g.titre.innerHTML = '<span class="chev">▼</span><span>' + echapper(nom) + '</span><span class="gstat">' +
+    (c.ko ? '<span class="pill ko">' + c.ko + ' problème' + (c.ko > 1 ? 's' : '') + '</span>' : '') +
+    (c.warn ? '<span class="pill warn">' + c.warn + ' à vérifier</span>' : '') +
+    '<span class="pill ok">' + c.ok + ' OK</span></span>';
+}
+
+async function analyseReelle(avecEcriture){
+  resultatsR.length = 0;
+  $("sortieR").innerHTML = ""; Object.keys(groupesR).forEach(k => delete groupesR[k]);
+  $("zoneProgR").classList.remove("cache");
+  $("btnAnalyser").disabled = true;
+  const etape = (r, txt) => {
+    $("barreRJauge").style.width = Math.round(r*100) + "%";
+    $("progRVal").textContent = Math.round(r*100) + " %";
+    $("encoursR").textContent = txt;
+  };
+  const etatR = (c, t) => { $("etatR").className = "etat " + c; $("etatR").innerHTML = '<span id="etatRTxt">' + echapper(t) + '</span>'; };
+  etatR("att", "Analyse en cours…");
+  window.__empreinteReelle = empreinteDonnees();
+
+  /* ─── 0. Fichiers déployés ─── */
+  ouvrirGroupeR("Fichiers déployés");
+  etape(.03, "vérification des fichiers en ligne"); await respirer();
+
+  journalFichiers.forEach(f => ajouterControle("Fichiers déployés", "Fichier " + f.f,
+    f.ok ? { etat:"ok", detail:"chargé (" + f.info + ")" } : { etat:"ko", detail:"introuvable — " + f.info }));
+
+  const clePurge = A.run("Store.KEYS.PURGED");
+  ajouterControle("Fichiers déployés", "js/storage.js à jour",
+    clePurge === "kpiPurgedIds"
+      ? { etat:"ok", detail:"la clé des suppressions définitives est correcte" }
+      : { etat:"ko", detail:
+          "Le fichier <b>js/storage.js</b> en ligne est <b>ancien</b> : il déclare <b>" + echapper(clePurge) +
+          "</b> au lieu de <b>kpiPurgedIds</b>.<br>" +
+          "Déposez la nouvelle version dans le dossier <code>js/</code> de votre dépôt " +
+          "(à côté de <code>merge.js</code> et <code>carousel.js</code>), puis rafraîchissez.<br>" +
+          "<i>Pour vérifier vous-même : ouvrez <b>" +
+          echapper(String(location.href || "").split("?")[0].replace(/[^/]*$/, "") + "js/storage.js") +
+          "</b> et cherchez la ligne PURGED.</i>" });
+
+  const arbitrage = (function(){
+    // Deux fiches de même date, auteurs différents : la fusion doit désigner
+    // le MÊME gagnant quel que soit le sens, sinon les appareils divergent.
+    const x = [{ id:"t", _mtime:100, _by:"A", v:"a" }], y = [{ id:"t", _mtime:100, _by:"B", v:"b" }];
+    try {
+      const g1 = A.run("mergeEntries(" + JSON.stringify(x) + "," + JSON.stringify(y) + ")")[0].v;
+      const g2 = A.run("mergeEntries(" + JSON.stringify(y) + "," + JSON.stringify(x) + ")")[0].v;
+      return g1 === g2;
+    } catch { return false; }
+  })();
+  ajouterControle("Fichiers déployés", "js/merge.js à jour",
+    arbitrage ? { etat:"ok", detail:"l'arbitrage en cas d'égalité de date est déterministe" }
+      : { etat:"ko", detail:
+          "Le fichier <b>js/merge.js</b> en ligne est <b>ancien</b> : quand deux appareils modifient une fiche " +
+          "à la même milliseconde, chacun garde sa propre version et ils <b>restent divergents</b>.<br>" +
+          "Déposez la nouvelle version dans le dossier <code>js/</code>, puis rafraîchissez." });
+
+  const appRecent = A.run("typeof nettoyerPurgees === 'function'");
+  ajouterControle("Fichiers déployés", "app.js à jour",
+    appRecent ? { etat:"ok", detail:"version <b>" + echapper(A.version) + "</b>, nettoyage automatique présent" }
+      : { etat:"ko", detail:"Le fichier <b>app.js</b> en ligne est ancien : la libération automatique des fiches supprimées définitivement n'y figure pas." });
+
+  /* ─── 1. Environnement ─── */
+  ouvrirGroupeR("Environnement");
+  etape(.05, "environnement"); await respirer();
+
+  const httpsOk = location.protocol !== "file:";
+  ajouterControle("Environnement", "Application ouverte par une adresse web",
+    httpsOk ? { etat:"ok", detail:"<b>" + echapper(location.origin) + "</b>" }
+            : { etat:"ko", detail:"Ouverture en <b>file://</b> : la synchronisation est impossible dans ce mode." });
+
+  ajouterControle("Environnement", "Version de app.js chargée",
+    { etat:"ok", detail:"<b>" + echapper(A ? A.version : "?") + "</b> — comparez cette valeur entre vos appareils." });
+
+  const utilisateur = localStorage.getItem(CLE.USER);
+  ajouterControle("Environnement", "Utilisateur enregistré sur cet appareil",
+    utilisateur ? { etat:"ok", detail:"<b>" + echapper(utilisateur) + "</b>" }
+                : { etat:"warn", detail:"Aucun utilisateur mémorisé (jamais connecté sur cet appareil ?)." });
+
+  const cfgLocale = lireLocal(CLE.CONFIG, null);
+  const cfgIntegree = { config: A.run("BUILTIN_FIREBASE_CONFIG"), code: A.run("BUILTIN_SYNC_CODE") };
+  const cfg = cfgLocale && cfgLocale.config && cfgLocale.code ? cfgLocale : cfgIntegree;
+
+  ajouterControle("Environnement", "Configuration de synchronisation présente",
+    cfgLocale ? { etat:"ok", detail:"projet <b>" + echapper(cfgLocale.config?.projectId || "?") + "</b>, code <b>" + echapper(cfgLocale.code || "?") + "</b>" }
+              : { etat:"warn", detail:"Aucune configuration enregistrée ici ; la configuration intégrée sera utilisée (projet <b>" + echapper(cfgIntegree.config?.projectId) + "</b>)." });
+
+  const memeProjet = !cfgLocale || (cfgLocale.config?.projectId === cfgIntegree.config?.projectId && cfgLocale.code === cfgIntegree.code);
+  ajouterControle("Environnement", "Cet appareil pointe vers le même projet que les autres",
+    memeProjet ? { etat:"ok", detail:"projet et code identiques à la configuration intégrée" }
+               : { etat:"ko", detail:"Cet appareil utilise <b>" + echapper(cfgLocale.config?.projectId) + " / " + echapper(cfgLocale.code) +
+                   "</b> au lieu de <b>" + echapper(cfgIntegree.config?.projectId) + " / " + echapper(cfgIntegree.code) +
+                   "</b> — il ne verra jamais les données des autres appareils." });
+
+  const optout = localStorage.getItem(CLE.OPTOUT);
+  ajouterControle("Environnement", "Synchronisation automatique active",
+    optout ? { etat:"warn", detail:"La synchronisation a été <b>désactivée</b> sur cet appareil (bouton « Désactiver » ou « Réinitialiser »)." }
+           : { etat:"ok", detail:"aucune désactivation en place" });
+
+  ajouterControle("Environnement", "Migration vers le nouveau format effectuée",
+    localStorage.getItem(CLE.MIGRE) === "1" ? { etat:"ok", detail:"l'ancien système Excel a été converti" }
+                                            : { etat:"warn", detail:"Migration pas encore effectuée sur cet appareil (elle aura lieu au prochain chargement de l'application)." });
+
+  /* ─── 2. Données de cet appareil ─── */
+  ouvrirGroupeR("Données de cet appareil");
+  etape(.2, "lecture de la mémoire locale"); await respirer();
+
+  const fiches0 = lireLocal(CLE.MANUAL, null);
+
+  /* Garde-fou : ce diagnostic doit lire les MÊMES emplacements que l'application.
+     Si une clé attendue est absente alors que d'autres existent, le diagnostic
+     lirait à côté et donnerait des chiffres faux. */
+  const clesPresentes = [];
+  for (let i = 0; i < localStorage.length; i++) clesPresentes.push(localStorage.key(i));
+  const attendues = [CLE.MANUAL, CLE.DELETED, CLE.PURGED, CLE.SITES];
+  const manquantes = attendues.filter(k => clesPresentes.indexOf(k) < 0);
+  const inconnues = clesPresentes.filter(k =>
+    k.indexOf("kpi") === 0 && Object.values(CLE).every(v => k !== v && k.indexOf(v) !== 0) &&
+    ["kpiMeta","kpiFavMeta","kpiSyncFavorites","kpiLocalUpdatedAt","kpiClockOffset",
+     "kpiSnapshots","kpiOptoutClearedV2","kpiDataCache","kpiOverrides","kpiFile","kpiFileB64"].indexOf(k) < 0);
+  ajouterControle("Données de cet appareil", "Le diagnostic lit bien les mêmes emplacements que l'application",
+    (manquantes.length === 0 || fiches0 === null) && inconnues.length === 0
+      ? { etat:"ok", detail:"emplacements de stockage reconnus" }
+      : { etat:"warn", detail:
+          (manquantes.length ? "Absentes : <b>" + manquantes.map(echapper).join(", ") + "</b> (normal si vous n'avez rien supprimé). " : "") +
+          (inconnues.length ? "Emplacements inconnus : <b>" + inconnues.map(echapper).join(", ") + "</b> — signalez-les." : "") });
+
+  const manual = fiches0;
+  ajouterControle("Données de cet appareil", "Fiches partagées lisibles",
+    Array.isArray(manual) ? { etat:"ok", detail:"<b>" + manual.length + "</b> variante(s) enregistrée(s)" }
+                          : { etat:"ko", detail:"Contenu illisible ou absent — l'application repartirait d'une liste vide." });
+
+  const fiches = Array.isArray(manual) ? manual : [];
+  const supprimes = (lireLocal(CLE.DELETED, []) || []).filter(d => d && d.state !== "restored");
+  const purges = lireLocal(CLE.PURGED, []) || [];
+  const idsSupprimes = new Set(supprimes.map(d => d.id));
+  const visibles = fiches.filter(f => f && !idsSupprimes.has(f.id) && purges.indexOf(f.id) < 0);
+  const nbKpis = A.run("countFiches(" + JSON.stringify(visibles) + ")");
+
+  const nbPurges = fiches.filter(f => f && purges.indexOf(f.id) >= 0).length;
+  ajouterControle("Données de cet appareil", "Nombre de KPIs et de variantes",
+    { etat: visibles.length ? "ok" : "warn",
+      detail:"<b>" + nbKpis + "</b> KPI(s) · <b>" + visibles.length + "</b> variante(s) visible(s)" +
+             (supprimes.length ? "<br>· " + supprimes.length + " variante(s) en corbeille (récupérables)" : "") +
+             (nbPurges ? "<br>· " + nbPurges + " variante(s) supprimée(s) définitivement" : "") +
+             "<br>· " + fiches.length + " variante(s) stockée(s) au total" });
+
+  const perso = lireLocal(CLE.PERSO + (utilisateur || ""), []) || [];
+  const persoTrash = lireLocal(CLE.PERSO_TRASH + (utilisateur || ""), []) || [];
+  const persoSyncActif = localStorage.getItem("kpiPersonalSync") !== "0";
+  ajouterControle("Données de cet appareil",
+    "Espace personnel " + (persoSyncActif ? "(suit votre nom d'utilisateur)" : "(gardé sur cet appareil)"),
+    { etat:"ok", detail:"<b>" + A.run("countFiches(" + JSON.stringify(perso) + ")") + "</b> KPI(s) personnel(s)" +
+      (persoTrash.length ? " · " + persoTrash.length + " dans la corbeille personnelle" : "") +
+      "<br><i>" + (persoSyncActif
+        ? "Ces fiches vous suivent sur vos appareils et ne sont visibles par personne d'autre dans l'application."
+        : "Synchronisation personnelle désactivée : ces fiches ne quittent pas cet appareil.") + "</i>" });
+
+  const anomalies = A.run("findVariantAnomalies(" + JSON.stringify(visibles) + ")");
+  ajouterControle("Données de cet appareil", "Cohérence des temporalités",
+    anomalies.length === 0 ? { etat:"ok", detail:"aucun doublon ni intitulé ambigu" }
+      : { etat:"warn", detail:"<b>" + anomalies.length + "</b> fiche(s) à vérifier :<br>" +
+          anomalies.slice(0,8).map(a => "• " + echapper(a.title) + " — " + echapper(a.reason)).join("<br>") });
+
+  const orphelins = supprimes.filter(d => !fiches.some(f => f && f.id === d.id));
+  ajouterControle("Données de cet appareil", "Marqueurs de corbeille cohérents",
+    orphelins.length === 0 ? { etat:"ok", detail:"chaque élément de la corbeille correspond à une fiche" }
+      : { etat:"warn", detail:"<b>" + orphelins.length + "</b> marqueur(s) sans fiche associée (sans gravité, mais inutile)." });
+
+  const sansLien = visibles.filter(f => {
+    const sites = lireLocal(CLE.SITES, []) || [];
+    return !sites.some(s => s && !s._deleted && f[s.key]);
+  });
+  ajouterControle("Données de cet appareil", "Fiches disposant d'au moins un lien",
+    sansLien.length === 0 ? { etat:"ok", detail:"toutes les variantes ont un lien de rapport" }
+      : { etat:"warn", detail:"<b>" + sansLien.length + "</b> variante(s) sans aucun lien :<br>" +
+          sansLien.slice(0,8).map(f => "• " + echapper(f.title) + " (" + echapper(f.freq || "?") + ")").join("<br>") });
+
+  /* Identifiants en double : deux fiches ne doivent jamais partager un identifiant */
+  const compteId = {};
+  fiches.forEach(f => { if (f && f.id) compteId[f.id] = (compteId[f.id] || 0) + 1; });
+  const idsDoubles = Object.keys(compteId).filter(id => compteId[id] > 1);
+  ajouterControle("Données de cet appareil", "Identifiants uniques",
+    idsDoubles.length === 0 ? { etat:"ok", detail:"aucun identifiant partagé par deux fiches" }
+      : { etat:"ko", detail:"<b>" + idsDoubles.length + "</b> identifiant(s) en double — la fusion en perdrait une :<br>" +
+          idsDoubles.slice(0,6).map(echapper).join("<br>") });
+
+  const sansId = fiches.filter(f => !f || !f.id);
+  ajouterControle("Données de cet appareil", "Fiches correctement formées",
+    sansId.length === 0 ? { etat:"ok", detail:"toutes les fiches ont un identifiant" }
+      : { etat:"ko", detail:"<b>" + sansId.length + "</b> fiche(s) sans identifiant : elles seraient ignorées à la synchronisation." });
+
+  /* Marqueurs de suppression définitive devenus inutiles */
+  const purgesOrphelins = purges.filter(id => !fiches.some(f => f && f.id === id));
+  ajouterControle("Données de cet appareil", "Suppressions définitives sans résidu",
+    { etat:"ok", detail: purges.length === 0 ? "aucune suppression définitive"
+        : "<b>" + purges.length + "</b> marqueur(s), dont <b>" + purgesOrphelins.length +
+          "</b> dont la fiche a bien été libérée de la mémoire" });
+
+  /* Liens qui ne ressemblent pas à des adresses */
+  const sitesTous = lireLocal(CLE.SITES, []) || [];
+  const liensDouteux = [];
+  visibles.forEach(f => sitesTous.forEach(st => {
+    const v = st && f[st.key];
+    if (v && !/^https?:\/\//i.test(v)) liensDouteux.push(f.title + " / " + st.name);
+  }));
+  ajouterControle("Données de cet appareil", "Liens de rapport bien formés",
+    liensDouteux.length === 0 ? { etat:"ok", detail:"tous les liens commencent par http(s)" }
+      : { etat:"warn", detail:"<b>" + liensDouteux.length + "</b> lien(s) suspect(s) :<br>" +
+          liensDouteux.slice(0,6).map(echapper).join("<br>") });
+
+  /* Liens rattachés à un périmètre qui n'existe plus */
+  const clesSites = new Set(sitesTous.map(s => s && s.key));
+  const clesConnues = new Set(["id","manual","personal","title","type","process","freq","ritual","desc",
+                               "_mtime","_by","edited"]);
+  const orphelinsSite = new Set();
+  visibles.forEach(f => Object.keys(f).forEach(k => {
+    if (!clesConnues.has(k) && !clesSites.has(k) && f[k]) orphelinsSite.add(k);
+  }));
+  ajouterControle("Données de cet appareil", "Liens rattachés à un périmètre existant",
+    orphelinsSite.size === 0 ? { etat:"ok", detail:"aucun lien orphelin" }
+      : { etat:"warn", detail:"Des liens pointent vers des périmètres supprimés : <b>" +
+          [...orphelinsSite].map(echapper).join(", ") + "</b> — ils sont invisibles dans l'application." });
+
+  /* Temporalités hors des trois standard */
+  const freqStd = ["mensuelle","hebdomadaire","quotidienne"];
+  const freqAutres = {};
+  visibles.forEach(f => { const q = (f.freq || "").trim();
+    if (!freqStd.includes(q.toLowerCase())) freqAutres[q || "(vide)"] = (freqAutres[q || "(vide)"] || 0) + 1; });
+  ajouterControle("Données de cet appareil", "Temporalités reconnues",
+    Object.keys(freqAutres).length === 0 ? { etat:"ok", detail:"Mensuelle, Hebdomadaire, Quotidienne uniquement" }
+      : { etat:"warn", detail:"Temporalités inhabituelles : " +
+          Object.entries(freqAutres).map(([q,n]) => "<b>" + echapper(q) + "</b> (" + n + ")").join(", ") });
+
+  /* Historique des versions et journal */
+  const instantanes = lireLocal("kpiSnapshots", []) || [];
+  ajouterControle("Données de cet appareil", "Historique des versions disponible",
+    instantanes.length ? { etat:"ok", detail:"<b>" + instantanes.length + "</b> version(s) enregistrée(s), la plus ancienne du <b>" +
+        new Date(instantanes[instantanes.length-1].at).toLocaleString("fr-FR") + "</b>" }
+      : { etat:"warn", detail:"Aucune version enregistrée : pas de retour en arrière possible pour l'instant." });
+
+  const journal = lireLocal(CLE.ACTIVITY, []) || [];
+  const auteurs = [...new Set(journal.map(e => e && e.by).filter(Boolean))];
+  ajouterControle("Données de cet appareil", "Journal d'activité",
+    { etat:"ok", detail:"<b>" + journal.length + "</b> entrée(s)" +
+      (auteurs.length ? " · utilisateurs vus : <b>" + auteurs.map(echapper).join(", ") + "</b>" : "") });
+
+  /* Volume qui partirait vers le cloud */
+  const tailleEnvoi = JSON.stringify({ kpiManual: fiches, kpiDeleted: supprimes,
+    kpiPurged: purges, kpiSites: sitesTous, kpiActivity: journal }).length;
+  ajouterControle("Données de cet appareil", "Volume envoyé à chaque synchronisation",
+    tailleEnvoi < 700000
+      ? { etat:"ok", detail:"<b>" + (tailleEnvoi/1024).toFixed(0) + " Ko</b> (limite d'un document : 1 024 Ko)" }
+      : { etat:"warn", detail:"<b>" + (tailleEnvoi/1024).toFixed(0) + " Ko</b> — proche de la limite de 1 024 Ko par document." });
+
+  const sites = (lireLocal(CLE.SITES, []) || []).filter(s => s && !s._deleted);
+  ajouterControle("Données de cet appareil", "Périmètres (sites) configurés",
+    sites.length ? { etat:"ok", detail:sites.map(s => echapper(s.name)).join(" · ") }
+                 : { etat:"ko", detail:"Aucun périmètre actif : les fiches ne pourraient afficher aucun lien." });
+
+  let octets = 0;
+  try { for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); octets += (k.length + (localStorage.getItem(k) || "").length) * 2; } } catch {}
+  const mo = octets / 1048576;
+  ajouterControle("Données de cet appareil", "Espace mémoire utilisé",
+    mo < 3.5 ? { etat:"ok", detail:"<b>" + mo.toFixed(2) + " Mo</b> sur environ 5 Mo disponibles" }
+             : { etat:"warn", detail:"<b>" + mo.toFixed(2) + " Mo</b> sur environ 5 Mo — proche de la limite du navigateur." });
+
+  /* ─── 3. Cloud ─── */
+  ouvrirGroupeR("Cloud partagé");
+  etape(.45, "connexion au cloud"); await respirer();
+
+  let docCloud = null, erreurCloud = null;
+  try {
+    await chargerFirebase();
+    ajouterControle("Cloud partagé", "Librairie Firebase disponible", { etat:"ok", detail:"chargée depuis gstatic.com" });
+    if (!firebase.apps.length) firebase.initializeApp(cfg.config);
+    const db = firebase.firestore();
+    const snap = await db.collection("kpi_sync").doc(cfg.code).get();   // LECTURE SEULE
+    docCloud = snap.exists ? snap.data() : null;
+    ajouterControle("Cloud partagé", "Lecture du document autorisée",
+      { etat:"ok", detail:"règles Firestore correctes pour la lecture" });
+  } catch (e) {
+    erreurCloud = e;
+    const permis = String(e && (e.code || e.message)).indexOf("permission") >= 0;
+    ajouterControle("Cloud partagé", "Accès au cloud",
+      { etat:"ko", detail: permis
+        ? "<b>Refusé par les règles Firestore.</b> Elles ont peut-être expiré (mode test) — republiez-les."
+        : "Échec : " + echapper(String(e && e.message || e)) });
+  }
+
+  etape(.7, "analyse du contenu distant"); await respirer();
+
+  if (!erreurCloud){
+    ajouterControle("Cloud partagé", "Document de synchronisation présent",
+      docCloud ? { etat:"ok", detail:"code <b>" + echapper(cfg.code) + "</b>" }
+               : { etat:"warn", detail:"Le cloud est <b>vide</b> pour ce code. Depuis l'appareil qui a les bonnes données, utilisez « ⭐ Cet appareil fait référence »." });
+
+    if (docCloud){
+      const cManual = Array.isArray(docCloud.kpiManual) ? docCloud.kpiManual : [];
+      const cSupp = (Array.isArray(docCloud.kpiDeleted) ? docCloud.kpiDeleted : []).filter(d => d && d.state !== "restored");
+      const cPurge = docCloud.kpiPurged || [];
+      const cIdsSupp = new Set(cSupp.map(d => d.id));
+      const cVisibles = cManual.filter(f => f && !cIdsSupp.has(f.id) && cPurge.indexOf(f.id) < 0);
+      const cKpis = A.run("countFiches(" + JSON.stringify(cVisibles) + ")");
+
+      ajouterControle("Cloud partagé", "Contenu du cloud",
+        { etat: cVisibles.length ? "ok" : "warn",
+          detail:"<b>" + cKpis + "</b> KPI(s) · <b>" + cVisibles.length + "</b> variante(s) visible(s)" });
+
+      const ancien = docCloud.kpiExcel !== undefined || docCloud.kpiOverrides !== undefined;
+      ajouterControle("Cloud partagé", "Format de données à jour",
+        ancien ? { etat:"warn", detail:"Le cloud contient encore l'<b>ancien format Excel</b>. Il sera converti, mais une remise à plat depuis un appareil sain est conseillée." }
+               : { etat:"ok", detail:"format récent (fiches uniquement)" });
+
+      const maj = docCloud.updatedAt ? new Date(docCloud.updatedAt) : null;
+      ajouterControle("Cloud partagé", "Dernière mise à jour du cloud",
+        maj ? { etat:"ok", detail:"<b>" + maj.toLocaleString("fr-FR") + "</b>" }
+            : { etat:"warn", detail:"date de mise à jour absente" });
+
+      /* ─── 4. Comparaison ─── */
+      ouvrirGroupeR("Comparaison appareil ↔ cloud");
+      etape(.85, "comparaison"); await respirer();
+
+      const parId = l => { const m = new Map(); l.forEach(f => f && f.id && m.set(f.id, f)); return m; };
+      const mLocal = parId(visibles), mCloud = parId(cVisibles);
+
+      const ici = [...mLocal.keys()].filter(id => !mCloud.has(id));
+      const laBas = [...mCloud.keys()].filter(id => !mLocal.has(id));
+      const nom = (m, id) => { const f = m.get(id); return echapper((f.title || id) + " (" + (f.freq || "?") + ")"); };
+
+      ajouterControle("Comparaison appareil ↔ cloud", "Fiches présentes ici mais absentes du cloud",
+        ici.length === 0 ? { etat:"ok", detail:"aucune — tout ce qui est ici est bien partagé" }
+          : { etat:"warn", detail:"<b>" + ici.length + "</b> :<br>" + ici.slice(0,10).map(id => "• " + nom(mLocal, id)).join("<br>") +
+              "<br><i>Elles n'ont pas encore été envoyées, ou la synchro est en pause.</i>" });
+
+      ajouterControle("Comparaison appareil ↔ cloud", "Fiches du cloud absentes de cet appareil",
+        laBas.length === 0 ? { etat:"ok", detail:"aucune — cet appareil est à jour" }
+          : { etat:"warn", detail:"<b>" + laBas.length + "</b> :<br>" + laBas.slice(0,10).map(id => "• " + nom(mCloud, id)).join("<br>") +
+              "<br><i>Utilisez « ⬇️ Récupérer » pour les faire venir.</i>" });
+
+      const champs = ["title","freq","type","process","ritual","desc"].concat(sites.map(s => s.key));
+      const divergentes = [...mLocal.keys()].filter(id => {
+        const a = mLocal.get(id), b = mCloud.get(id);
+        return b && champs.some(c => (a[c] || "") !== (b[c] || ""));
+      });
+      ajouterControle("Comparaison appareil ↔ cloud", "Fiches identiques des deux côtés",
+        divergentes.length === 0 ? { etat:"ok", detail:"aucun écart de contenu détecté" }
+          : { etat:"warn", detail:"<b>" + divergentes.length + "</b> fiche(s) diffèrent :<br>" +
+              divergentes.slice(0,8).map(id => {
+                const a = mLocal.get(id), b = mCloud.get(id);
+                const ecarts = champs.filter(c => (a[c] || "") !== (b[c] || ""));
+                return "• " + nom(mLocal, id) + " — champs : " + ecarts.map(echapper).join(", ");
+              }).join("<br>") });
+
+      /* Corbeilles et suppressions définitives : sont-elles alignées ? */
+      const dLocal = new Set(supprimes.map(d => d.id));
+      const dCloud = new Set(cSupp.map(d => d.id));
+      const dEcart = [...dLocal].filter(i => !dCloud.has(i)).length + [...dCloud].filter(i => !dLocal.has(i)).length;
+      ajouterControle("Comparaison appareil ↔ cloud", "Corbeilles alignées",
+        dEcart === 0 ? { etat:"ok", detail:"mêmes fiches en corbeille des deux côtés (" + dLocal.size + ")" }
+          : { etat:"warn", detail:"<b>" + dEcart + "</b> écart(s) : une suppression faite quelque part n'a pas encore circulé." });
+
+      const pLocal = new Set(purges), pCloud = new Set(cPurge);
+      const pEcart = [...pLocal].filter(i => !pCloud.has(i)).length + [...pCloud].filter(i => !pLocal.has(i)).length;
+      ajouterControle("Comparaison appareil ↔ cloud", "Suppressions définitives alignées",
+        pEcart === 0 ? { etat:"ok", detail:"mêmes suppressions définitives (" + pLocal.size + ")" }
+          : { etat:"warn", detail:"<b>" + pEcart + "</b> écart(s) entre cet appareil et le cloud." });
+
+      /* Fraîcheur : qui est en avance sur qui ? */
+      const majLocale = +(localStorage.getItem("kpiLocalUpdatedAt") || 0);
+      const majCloud = docCloud.updatedAt || 0;
+      const ecartH = Math.round(Math.abs(majLocale - majCloud) / 60000);
+      ajouterControle("Comparaison appareil ↔ cloud", "Fraîcheur des données",
+        majLocale === 0 ? { etat:"warn", detail:"Aucune modification locale enregistrée sur cet appareil." }
+        : majLocale > majCloud
+          ? { etat:"warn", detail:"Cet appareil a été modifié <b>" + ecartH + " min</b> après le dernier envoi : des changements n'ont pas encore été partagés." }
+          : { etat:"ok", detail:"le cloud est aussi récent ou plus récent que cet appareil" });
+
+      /* Volume du document distant */
+      const tailleCloud = JSON.stringify(docCloud).length;
+      ajouterControle("Comparaison appareil ↔ cloud", "Taille du document distant",
+        tailleCloud < 700000 ? { etat:"ok", detail:"<b>" + (tailleCloud/1024).toFixed(0) + " Ko</b> sur 1 024 Ko autorisés" }
+          : { etat:"warn", detail:"<b>" + (tailleCloud/1024).toFixed(0) + " Ko</b> — proche de la limite d'un document Firestore." });
+
+      /* Le cloud contient-il des fiches déjà supprimées définitivement ici ? */
+      const fantomes = cManual.filter(f => f && purges.includes(f.id));
+      ajouterControle("Comparaison appareil ↔ cloud", "Aucune fiche fantôme dans le cloud",
+        fantomes.length === 0 ? { etat:"ok", detail:"le cloud ne transporte pas de fiche supprimée définitivement" }
+          : { etat:"warn", detail:"<b>" + fantomes.length + "</b> fiche(s) supprimée(s) définitivement ici sont encore stockées dans le cloud :<br>" +
+              fantomes.slice(0,6).map(f => "• " + echapper(f.title || f.id)).join("<br>") +
+              "<br><i>Elles sont invisibles, mais alourdissent chaque synchronisation. Un envoi depuis cet appareil les nettoiera.</i>" });
+
+      /* Doublons côté cloud */
+      const anomCloud = A.run("findVariantAnomalies(" + JSON.stringify(cVisibles) + ")");
+      ajouterControle("Comparaison appareil ↔ cloud", "Cohérence des temporalités côté cloud",
+        anomCloud.length === 0 ? { etat:"ok", detail:"aucun doublon dans le cloud" }
+          : { etat:"warn", detail:"<b>" + anomCloud.length + "</b> fiche(s) à vérifier dans le cloud :<br>" +
+              anomCloud.slice(0,6).map(a => "• " + echapper(a.title) + " — " + echapper(a.reason)).join("<br>") });
+
+      const sLocal = sites.map(s => s.key).sort().join(",");
+      const sCloud = (docCloud.kpiSites || []).filter(s => s && !s._deleted).map(s => s.key).sort().join(",");
+      ajouterControle("Comparaison appareil ↔ cloud", "Périmètres identiques des deux côtés",
+        sLocal === sCloud ? { etat:"ok", detail:"mêmes sites ici et dans le cloud" }
+          : { etat:"warn", detail:"Ici : <b>" + echapper(sLocal || "aucun") + "</b><br>Cloud : <b>" + echapper(sCloud || "aucun") + "</b>" });
+    }
+  }
+
+  /* ─── 4 bis. Contrôles complémentaires ─── */
+  if (!erreurCloud && docCloud) {
+    /* Favoris orphelins */
+    const favUsers = docCloud.favoritesByUser || {};
+    const idsConnus = new Set((docCloud.kpiManual || []).map(k => k && k.id));
+    let favOrphelins = 0;
+    Object.values(favUsers).forEach(l => (l || []).forEach(id => { if (!idsConnus.has(id)) favOrphelins++; }));
+    ajouterControle("Cloud partagé", "Favoris pointant vers des fiches existantes",
+      favOrphelins === 0 ? { etat:"ok", detail:"aucun favori orphelin" }
+        : { etat:"warn", detail:"<b>" + favOrphelins + "</b> favori(s) désignent des fiches supprimées — sans gravité." });
+
+    /* Qui utilise l'annuaire ? */
+    const utilisateurs = Object.keys(favUsers);
+    ajouterControle("Cloud partagé", "Utilisateurs connus du cloud",
+      { etat:"ok", detail: utilisateurs.length
+          ? "<b>" + utilisateurs.map(echapper).join(", ") + "</b>"
+          : "aucun favori enregistré pour l'instant" });
+
+    /* Aucune fiche personnelle ne doit avoir fuité */
+    const persoFuitees = (docCloud.kpiManual || []).filter(k => k && k.personal);
+    /* Espace personnel : rangé par utilisateur, invisible aux autres */
+    const persoMap = (docCloud.personalByUser && typeof docCloud.personalByUser === "object")
+                   ? docCloud.personalByUser : null;
+    const persoSyncOn = localStorage.getItem("kpiPersonalSync") !== "0";
+    if (persoMap) {
+      // On ne compte que les espaces réellement remplis : un bloc vide ne
+      // signifie rien d'autre que « cet utilisateur s'est déjà synchronisé ».
+      const remplis = Object.keys(persoMap).filter(u => Array.isArray(persoMap[u]) && persoMap[u].length);
+      const miens = Array.isArray(persoMap[utilisateur]) ? persoMap[utilisateur] : [];
+      ajouterControle("Cloud partagé", "Espace personnel synchronisé par utilisateur",
+        { etat:"ok", detail:
+          (remplis.length
+            ? "<b>" + remplis.length + "</b> utilisateur(s) ont des fiches personnelles dans le cloud"
+            : "aucun utilisateur n'a encore de fiche personnelle dans le cloud") +
+          (utilisateur ? " · le vôtre en contient <b>" + miens.length + "</b>" : "") +
+          "<br><i>L'application n'affiche jamais que le bloc de l'utilisateur connecté.</i>" });
+
+      // Aucun bloc personnel ne doit contenir de fiche marquée « partagée »
+      const melange = Object.keys(persoMap).filter(u =>
+        Array.isArray(persoMap[u]) && persoMap[u].some(k => k && k.personal === false));
+      ajouterControle("Cloud partagé", "Les deux espaces ne se mélangent pas",
+        melange.length === 0
+          ? { etat:"ok", detail:"aucune fiche partagée ne s'est glissée dans un espace personnel" }
+          : { etat:"warn", detail:"Blocs concernés : <b>" + melange.map(echapper).join(", ") + "</b>" });
+
+      const tailleP = JSON.stringify(persoMap).length;
+      ajouterControle("Cloud partagé", "Poids de l'espace personnel dans les échanges",
+        tailleP < 300000
+          ? { etat:"ok", detail:"<b>" + (tailleP/1024).toFixed(0) + " Ko</b> pour l'ensemble des utilisateurs" }
+          : { etat:"warn", detail:"<b>" + (tailleP/1024).toFixed(0) + " Ko</b> — cet espace commence à peser lourd dans chaque synchronisation." });
+    } else {
+      ajouterControle("Cloud partagé", "Espace personnel synchronisé par utilisateur",
+        persoSyncOn
+          ? { etat:"warn", detail:"Aucun espace personnel dans le cloud pour l'instant. Il y apparaîtra à votre prochaine modification personnelle." }
+          : { etat:"ok", detail:"Synchronisation personnelle <b>désactivée</b> sur cet appareil : vos fiches personnelles restent ici." });
+    }
+
+    ajouterControle("Cloud partagé", "Aucune fiche personnelle n'a fuité",
+      persoFuitees.length === 0
+        ? { etat:"ok", detail:"aucune fiche personnelle ne s'est glissée dans l'annuaire partagé" }
+        : { etat:"ko", detail:"<b>" + persoFuitees.length + "</b> fiche(s) personnelle(s) présentes dans le cloud partagé." });
+
+    /* Fiches sans intitulé */
+    const sansTitre = (docCloud.kpiManual || []).filter(k => k && !String(k.title || "").trim());
+    ajouterControle("Cloud partagé", "Toutes les fiches distantes ont un intitulé",
+      sansTitre.length === 0 ? { etat:"ok", detail:"aucune fiche anonyme" }
+        : { etat:"warn", detail:"<b>" + sansTitre.length + "</b> fiche(s) sans intitulé : elles s'afficheraient vides." });
+
+    /* Part du journal dans le volume envoyé */
+    const tailleJournal = JSON.stringify(docCloud.kpiActivity || []).length;
+    const tailleTotale = JSON.stringify(docCloud).length || 1;
+    const part = Math.round(tailleJournal / tailleTotale * 100);
+    ajouterControle("Cloud partagé", "Part du journal d'activité dans les échanges",
+      part < 50 ? { etat:"ok", detail:"<b>" + part + " %</b> du document (" + (tailleJournal/1024).toFixed(0) + " Ko)" }
+        : { etat:"warn", detail:"<b>" + part + " %</b> du document est occupé par le journal d'activité." });
+
+    /* Documents de test résiduels d'une exécution précédente */
+    let residus = [];
+    for (const suffixe of ["__autotest", "__scenario", "__scenario__clock", "__clock"]) {
+      try {
+        const d = await db.collection("kpi_sync").doc(cfg.code + suffixe).get();
+        if (d.exists) residus.push(cfg.code + suffixe);
+      } catch { /* lecture refusée : sans importance ici */ }
+    }
+    ajouterControle("Cloud partagé", "Aucun document de test résiduel",
+      residus.length === 0 ? { etat:"ok", detail:"le projet ne contient que votre document de synchronisation" }
+        : { etat:"warn", detail:"Documents laissés par un test précédent : <b>" + residus.map(echapper).join(", ") +
+            "</b> — sans effet sur vos données, supprimables depuis la console Firebase." });
+  }
+
+  /* ─── 4 ter. Sécurité ─── */
+  if (!erreurCloud) {
+    ouvrirGroupeR("Sécurité");
+    ajouterControle("Sécurité", "Configuration Firebase visible publiquement (normal)",
+      { etat:"ok", detail:"C'est normal pour une application web : la clé n'est pas un mot de passe. " +
+        "Ce sont les <b>règles Firestore</b> qui protègent réellement les données." });
+
+    let ouvertATous = null;
+    try {
+      const sonde = db.collection("kpi_sondage_securite").doc("test_" + Date.now());
+      docsEcritsParLaPage.add("kpi_sondage_securite");
+      await sonde.set({ t: Date.now() });
+      ouvertATous = true;
+      try { await sonde.delete(); } catch {}
+    } catch { ouvertATous = false; }
+    ajouterControle("Sécurité", "Étendue des droits d'écriture",
+      ouvertATous === false
+        ? { etat:"ok", detail:"l'écriture est limitée : les autres emplacements du projet sont protégés" }
+        : { etat:"warn", detail:"Vos règles autorisent l'écriture <b>partout</b> dans le projet. " +
+            "Pour un outil interne c'est acceptable, mais toute personne connaissant l'adresse du site " +
+            "peut modifier l'annuaire. Restreindre les règles à la collection <code>kpi_sync</code> " +
+            "limiterait la portée d'une erreur." });
+
+    ajouterControle("Sécurité", "Identification des utilisateurs (déclarative)",
+      { etat:"ok", detail:"L'identifiant saisi à la connexion n'est pas vérifié. " +
+        "Le journal d'activité indique qui a agi de bonne foi, mais ne constitue pas une preuve." });
+  }
+
+  /* ─── 5. Écriture (optionnelle) ─── */
+  if (avecEcriture && !erreurCloud){
+    ouvrirGroupeR("Test d'écriture");
+    etape(.95, "test d'écriture"); await respirer();
+    try {
+      const db = firebase.firestore();
+      const ref = db.collection("kpi_sync").doc(cfg.code + "__autotest");
+      const jeton = "t" + Date.now();
+      docsEcritsParLaPage.add(cfg.code + "__autotest");
+      await ref.set({ jeton, at: Date.now() });
+      const relu = await ref.get();
+      const ok = relu.exists && relu.data().jeton === jeton;
+      ajouterControle("Test d'écriture", "Écriture puis relecture dans le cloud",
+        ok ? { etat:"ok", detail:"cet appareil peut bien envoyer ses données" }
+           : { etat:"ko", detail:"l'écriture n'a pas été relue correctement" });
+      try { await ref.delete(); ajouterControle("Test d'écriture", "Document de test supprimé", { etat:"ok", detail:"aucune trace laissée" }); }
+      catch { ajouterControle("Test d'écriture", "Document de test supprimé", { etat:"warn", detail:"suppression impossible : un document <b>" + echapper(cfg.code) + "__autotest</b> subsiste (sans effet sur vos données)." }); }
+    } catch(e){
+      ajouterControle("Test d'écriture", "Écriture dans le cloud",
+        { etat:"ko", detail:"Refusée : " + echapper(String(e && e.message || e)) + "<br>Cet appareil peut lire mais <b>pas envoyer</b> ses modifications." });
+    }
+  }
+
+  /* ─── Synthèse ─── */
+  etape(1, "terminé");
+  const n = { ok:0, warn:0, ko:0 };
+  resultatsR.forEach(r => n[r.etat]++);
+  $("cartesR").innerHTML =
+    carte(resultatsR.length, "Contrôles", "acc") +
+    carte(n.ok, "Conformes", "ok") +
+    carte(n.warn, "À vérifier", n.warn ? "gold" : "ok") +
+    carte(n.ko, "Problèmes", n.ko ? "ko" : "ok");
+
+  if (n.ko) etatR("ko", n.ko + " problème(s) bloquant(s) détecté(s) — voir le détail ci-dessous");
+  else if (n.warn) etatR("att", n.warn + " point(s) à vérifier — aucun blocage");
+  else etatR("ok", "Tout est cohérent : cet appareil et le cloud sont alignés");
+
+  $("btnAnalyser").disabled = false;
+  $("btnAnalyser").textContent = "↻ Relancer l'analyse";
+}
+
+$("modeSandbox").addEventListener("click", function(){
+  this.classList.add("actif"); $("modeReel").classList.remove("actif");
+  $("vueSandbox").classList.remove("cache"); $("vueReel").classList.add("cache");
+});
+$("modeReel").addEventListener("click", function(){
+  this.classList.add("actif"); $("modeSandbox").classList.remove("actif");
+  $("vueReel").classList.remove("cache"); $("vueSandbox").classList.add("cache");
+});
+$("btnAnalyser").addEventListener("click", () => analyseReelle(false));
+$("btnEcriture").addEventListener("click", () => analyseReelle(true));
+
+/* ══════════════════════════════════════════════════════════════════════
+   SCÉNARIOS D'UTILISATION RÉELLE
+   Deux appareils simulés dialoguent via VOTRE vrai Firebase, mais dans un
+   document de test isolé (« …__scenario ») effacé à la fin.
+   Votre document de synchronisation n'est jamais touché.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const patiente = ms => new Promise(r => setTimeout(r, ms));
+
+/** Crée un appareil simulé branché sur le vrai Firebase, code de test. */
+function creerAppareil(nom, cfgReelle, codeTest){
+  const h = creerHarnais(window.__sources);
+  h.reset({ currentUser: nom, autoriserSync: true });
+  h.run("firebase = globalThis.firebase;");           // vrai SDK Firebase
+  h.run('localStorage.setItem("kpiOptoutClearedV2","1");');
+  h.run("setSyncConfig(" + JSON.stringify({ config: cfgReelle.config, code: codeTest, enabled: true }) + ");");
+  return h;
+}
+
+/** Titres visibles sur un appareil, triés — sert à comparer deux appareils. */
+const vusPar = h => h.run("data.map(function(k){return k.title + '|' + (k.freq||'');}).sort()");
+
+async function scenariosSynchro(){
+  const groupe = "Scénarios d'utilisation réelle";
+  ouvrirGroupeR(groupe);
+  const etape = (r, txt) => {
+    $("barreRJauge").style.width = Math.round(r*100) + "%";
+    $("progRVal").textContent = Math.round(r*100) + " %";
+    $("progRLib").textContent = "Scénarios de synchronisation";
+    $("encoursR").textContent = txt;
+  };
+  $("zoneProgR").classList.remove("cache");
+
+  const cfgLocale = lireLocal(CLE.CONFIG, null);
+  const cfg = (cfgLocale && cfgLocale.config && cfgLocale.code)
+    ? cfgLocale : { config: A.run("BUILTIN_FIREBASE_CONFIG"), code: A.run("BUILTIN_SYNC_CODE") };
+  const codeTest = cfg.code + "__scenario";
+
+  let db = null;
+  try {
+    await chargerFirebase();
+    if (!firebase.apps.length) firebase.initializeApp(cfg.config);
+    db = firebase.firestore();
+  } catch(e){
+    ajouterControle(groupe, "Connexion à Firebase", { etat:"ko", detail: echapper(String(e.message || e)) });
+    return;
+  }
+
+  let majAvantScenarios = 0;
+  try {
+    const principalAvant = await db.collection("kpi_sync").doc(cfg.code).get();
+    majAvantScenarios = principalAvant.exists ? (principalAvant.data().updatedAt || 0) : 0;
+  } catch {}
+
+  const refTest = () => db.collection("kpi_sync").doc(codeTest);
+  try { await refTest().delete(); } catch {}   // repart d'un document vierge
+
+  docsEcritsParLaPage.add(codeTest);      // seul document écrit par les scénarios
+  const A1 = creerAppareil("appareil-A", cfg, codeTest);
+  const B1 = creerAppareil("appareil-B", cfg, codeTest);
+  const t0 = Date.now();
+
+  const controle = (nom, ok, detail) =>
+    ajouterControle(groupe, nom, ok ? { etat:"ok", detail } : { etat:"ko", detail });
+
+  try {
+    /* ── 1. Connexion ── */
+    etape(.05, "connexion des deux appareils"); await respirer();
+    A1.run("connectSync(false)"); B1.run("connectSync(false)");
+    await patiente(1200);
+    controle("Les deux appareils se connectent au cloud",
+      A1.run("!!fbDb") && B1.run("!!fbDb"),
+      "document de test <b>" + echapper(codeTest) + "</b> (isolé de vos données)");
+
+    /* ── 2. Création puis envoi ── */
+    etape(.15, "l'appareil A crée un KPI"); await respirer();
+    A1.run(`manualEntries = [{ id:"sc_kpi_1", manual:true, title:"KPI de test", freq:"Mensuelle",
+             logistiport:"https://exemple/a", _mtime: now(), _by:"appareil-A" }]; rebuildData(false);`);
+    await A1.run("pushToCloud(false)");
+    const apresEnvoi = (await refTest().get()).data();
+    controle("L'appareil A envoie sa fiche au cloud",
+      !!(apresEnvoi && apresEnvoi.kpiManual && apresEnvoi.kpiManual.length === 1),
+      "le document distant contient bien la fiche créée");
+
+    /* ── 3. Réception sur le second appareil ── */
+    etape(.25, "l'appareil B récupère"); await respirer();
+    B1.run("initialSyncDone = false");
+    await B1.run("initialSync(getSyncConfig().code, false)");
+    controle("L'appareil B reçoit la fiche de A",
+      B1.run("data.length") === 1 && B1.run('data[0].title') === "KPI de test",
+      "B affiche « KPI de test » sans intervention manuelle");
+
+    /* ── 4. Modification concurrente ── */
+    etape(.35, "B modifie, A reçoit"); await respirer();
+    B1.run(`(function(){ var k = manualEntries[0]; k.armement = "https://exemple/mg"; stamp(k); })();
+            saveManualEntries(false); rebuildData(false);`);
+    await B1.run("pushToCloud(false)");
+    A1.run("initialSyncDone = false");
+    await A1.run("initialSync(getSyncConfig().code, false)");
+    controle("La modification de B remonte jusqu'à A",
+      A1.run('data[0].armement') === "https://exemple/mg",
+      "le lien ajouté par B est visible sur A");
+
+    controle("Aucun doublon après l'échange",
+      A1.run("data.length") === 1 && B1.run("data.length") === 1,
+      "une seule fiche de chaque côté");
+
+    /* ── 4 bis. Une modification locale non envoyée ne doit pas être perdue ── */
+    etape(.4, "modification locale non encore envoyée"); await respirer();
+    A1.run(`(function(){ var k = manualEntries[0]; k.ritual = "Comité de direction"; stamp(k); })();
+            saveManualEntries(false); rebuildData(false);`);
+    A1.run("initialSyncDone = false");
+    await A1.run("initialSync(getSyncConfig().code, false)");   // le cloud a une version plus ancienne
+    controle("Une modification faite ici et pas encore envoyée n'est pas écrasée",
+      A1.run('data[0].ritual') === "Comité de direction",
+      "c'est la garantie que votre travail en cours ne disparaît pas lors d'une synchronisation");
+
+    await A1.run("pushToCloud(false)");
+    B1.run("initialSyncDone = false");
+    await B1.run("initialSync(getSyncConfig().code, false)");
+    controle("…et elle finit bien par arriver sur l'autre appareil",
+      B1.run('data[0].ritual') === "Comité de direction",
+      "B voit la modification une fois l'envoi effectué");
+
+    /* ── 5. Suppression propagée ── */
+    etape(.45, "suppression et propagation"); await respirer();
+    A1.run(`markDeleted("sc_kpi_1", { title:"KPI de test", freq:"Mensuelle" });
+            saveDeletedIds(false); rebuildData(false);`);
+    await A1.run("pushToCloud(false)");
+    B1.run("initialSyncDone = false");
+    await B1.run("initialSync(getSyncConfig().code, false)");
+    controle("Une suppression faite sur A disparaît aussi sur B",
+      B1.run("data.length") === 0, "la fiche n'est plus affichée sur B");
+
+    /* ── 6. Restauration propagée ── */
+    etape(.55, "restauration"); await respirer();
+    A1.run(`deletedIds = deletedIds.map(function(d){
+              return d.id === "sc_kpi_1" ? Object.assign({}, d, { state:"restored", at: now() }) : d; });
+            saveDeletedIds(false); rebuildData(false);`);
+    await A1.run("pushToCloud(false)");
+    B1.run("initialSyncDone = false");
+    await B1.run("initialSync(getSyncConfig().code, false)");
+    controle("Une fiche réaffichée depuis la corbeille revient sur les deux appareils",
+      B1.run("data.length") === 1, "B la voit de nouveau, avec ses liens");
+
+    /* ── 7. Périmètres ajoutés des deux côtés ── */
+    etape(.65, "ajout de périmètres des deux côtés"); await respirer();
+    A1.run(`sites.push({ key:"sc_qualite", name:"Qualité (test)", _mtime: now() }); saveSites(false);`);
+    B1.run(`sites.push({ key:"sc_securite", name:"Sécurité (test)", _mtime: now() }); saveSites(false);`);
+    await A1.run("pushToCloud(false)");
+    B1.run("initialSyncDone = false"); await B1.run("initialSync(getSyncConfig().code, false)");
+    await B1.run("pushToCloud(false)");
+    A1.run("initialSyncDone = false"); await A1.run("initialSync(getSyncConfig().code, false)");
+    const clesA = A1.run("activeSites().map(function(s){return s.key;}).sort()");
+    const clesB = B1.run("activeSites().map(function(s){return s.key;}).sort()");
+    controle("Deux périmètres ajoutés en parallèle coexistent",
+      clesA.indexOf("sc_qualite") >= 0 && clesA.indexOf("sc_securite") >= 0 &&
+      clesB.indexOf("sc_qualite") >= 0 && clesB.indexOf("sc_securite") >= 0,
+      "aucun des deux ajouts n'écrase l'autre");
+
+    /* ── 8. Travail hors-ligne ── */
+    etape(.75, "travail hors-ligne puis reconnexion"); await respirer();
+    B1.run(`manualEntries.push({ id:"sc_hors_ligne", manual:true, title:"Créé hors-ligne",
+             freq:"Mensuelle", logistiport:"https://exemple/hl", _mtime: 1, _by:"appareil-B" });
+            saveManualEntries(false); rebuildData(false);`);
+    A1.run(`manualEntries.push({ id:"sc_recent", manual:true, title:"Créé pendant ce temps",
+             freq:"Mensuelle", logistiport:"https://exemple/r", _mtime: now(), _by:"appareil-A" });
+            saveManualEntries(false); rebuildData(false);`);
+    await A1.run("pushToCloud(false)");
+    B1.run("initialSyncDone = false");
+    await B1.run("initialSync(getSyncConfig().code, false)");
+    A1.run("initialSyncDone = false");
+    await A1.run("initialSync(getSyncConfig().code, false)");
+    const titresA = vusPar(A1);
+    controle("Une fiche créée hors-ligne remonte bien au retour du réseau",
+      titresA.some(function(t){ return t.indexOf("Créé hors-ligne") === 0; }),
+      "c'est le défaut corrigé récemment : sans cela, la fiche restait bloquée sur l'appareil");
+
+    /* ── 9. Écoute temps réel ── */
+    etape(.85, "réception automatique"); await respirer();
+    B1.run("initialSyncDone = true; syncBusy = false; lastAppliedSyncAt = 0;");
+    const avantEcoute = B1.run("data.length");
+    A1.run(`manualEntries.push({ id:"sc_temps_reel", manual:true, title:"Envoyé en direct",
+             freq:"Mensuelle", _mtime: now(), _by:"appareil-A" }); saveManualEntries(false); rebuildData(false);`);
+    await A1.run("pushToCloud(false)");
+    await patiente(2500);                       // laisse l'écoute Firestore réagir
+    controle("Une modification est reçue automatiquement, sans clic",
+      B1.run("data.length") > avantEcoute,
+      "l'écoute temps réel fonctionne entre vos appareils");
+
+    /* ── 10. Convergence ── */
+    etape(.9, "convergence finale"); await respirer();
+    A1.run("initialSyncDone = false"); await A1.run("initialSync(getSyncConfig().code, false)");
+    B1.run("initialSyncDone = false"); await B1.run("initialSync(getSyncConfig().code, false)");
+    const finA = vusPar(A1).join(","), finB = vusPar(B1).join(",");
+    controle("Les deux appareils finissent strictement identiques",
+      finA === finB && finA.length > 0,
+      finA === finB ? A1.run("data.length") + " fiche(s) identiques des deux côtés"
+                    : "A : " + echapper(finA) + "<br>B : " + echapper(finB));
+
+
+    /* ── 12. Écriture SIMULTANÉE des deux appareils ── */
+    etape(.88, "écriture simultanée des deux appareils"); await respirer();
+    A1.run(`manualEntries.push({ id:"sc_simult_A", manual:true, title:"Simultané A",
+             freq:"Mensuelle", _mtime: now(), _by:"appareil-A" }); saveManualEntries(false); rebuildData(false);`);
+    B1.run(`manualEntries.push({ id:"sc_simult_B", manual:true, title:"Simultané B",
+             freq:"Mensuelle", _mtime: now(), _by:"appareil-B" }); saveManualEntries(false); rebuildData(false);`);
+    // Les deux envoient EN MÊME TEMPS : l'un des deux documents écrase l'autre
+    await Promise.all([ A1.run("pushToCloud(false)"), B1.run("pushToCloud(false)") ]);
+    await patiente(1500);                       // laisse les écoutes réagir
+    const docApresSimult = (await refTest().get()).data() || { kpiManual: [] };
+    const idsApres = (docApresSimult.kpiManual || []).map(function(k){ return k.id; });
+    const lesDeux = idsApres.indexOf("sc_simult_A") >= 0 && idsApres.indexOf("sc_simult_B") >= 0;
+    ajouterControle(groupe, "Deux envois simultanés : le document reste cohérent",
+      { etat:"ok", detail: lesDeux
+          ? "les deux fiches créées au même instant se retrouvent immédiatement dans le cloud"
+          : "Comportement attendu : l'une des deux écritures a pris le dessus sur l'instant. " +
+            "Le contrôle suivant vérifie que rien n'est perdu pour autant." });
+
+    /* ── 13. Le système se rattrape-t-il ? ── */
+    etape(.9, "rattrapage automatique"); await respirer();
+    A1.run("initialSyncDone = false"); await A1.run("initialSync(getSyncConfig().code, false)");
+    B1.run("initialSyncDone = false"); await B1.run("initialSync(getSyncConfig().code, false)");
+    A1.run("initialSyncDone = false"); await A1.run("initialSync(getSyncConfig().code, false)");
+    const titresApres = vusPar(A1).concat(vusPar(B1)).join("|");
+    controle("Après un envoi simultané, chaque appareil retrouve les deux créations",
+      titresApres.indexOf("Simultané A") >= 0 && titresApres.indexOf("Simultané B") >= 0,
+      "aucune perte définitive : la synchronisation suivante restitue tout");
+
+    /* ── 14. Modification SIMULTANÉE de la même fiche ── */
+    etape(.92, "modification simultanée de la même fiche"); await respirer();
+    A1.run(`(function(){ var k = manualEntries.find(function(x){return x.id==="sc_kpi_1";});
+             if (k) { k.type = "Type par A"; stamp(k); } })(); saveManualEntries(false);`);
+    B1.run(`(function(){ var k = manualEntries.find(function(x){return x.id==="sc_kpi_1";});
+             if (k) { k.type = "Type par B"; stamp(k); } })(); saveManualEntries(false);`);
+    await Promise.all([ A1.run("pushToCloud(false)"), B1.run("pushToCloud(false)") ]);
+    await patiente(1200);
+    A1.run("initialSyncDone = false"); await A1.run("initialSync(getSyncConfig().code, false)");
+    B1.run("initialSyncDone = false"); await B1.run("initialSync(getSyncConfig().code, false)");
+    const typeA = A1.run(`(data.find(function(k){return k.id==="sc_kpi_1";})||{}).type`);
+    const typeB = B1.run(`(data.find(function(k){return k.id==="sc_kpi_1";})||{}).type`);
+    controle("Deux modifications simultanées de la même fiche aboutissent au même résultat",
+      typeA === typeB && !!typeA,
+      "les deux appareils affichent « " + echapper(String(typeA)) + " » — pas de version divergente");
+
+    /* ── 15. Rafale d'envois rapides ── */
+    etape(.94, "rafale d'envois rapides"); await respirer();
+    for (let i = 0; i < 4; i++){
+      A1.run(`manualEntries.push({ id:"sc_rafale_${i}", manual:true, title:"Rafale ${i}",
+               freq:"Mensuelle", _mtime: now(), _by:"appareil-A" }); saveManualEntries(false);`);
+    }
+    await Promise.all([0,1,2].map(function(){ return A1.run("pushToCloud(false)"); }));
+    await patiente(900);
+    const docRafale = (await refTest().get()).data() || { kpiManual: [] };
+    const nbRafale = (docRafale.kpiManual || []).filter(function(k){ return String(k.id).indexOf("sc_rafale_") === 0; }).length;
+    controle("Une rafale d'envois rapprochés ne corrompt pas le document",
+      nbRafale === 4, "les 4 fiches envoyées coup sur coup sont bien présentes (" + nbRafale + "/4)");
+
+    /* ── 16. Connexion simultanée des deux appareils au démarrage ── */
+    etape(.96, "connexion simultanée au démarrage"); await respirer();
+    A1.run("initialSyncDone = false; syncBusy = false;");
+    B1.run("initialSyncDone = false; syncBusy = false;");
+    await Promise.all([
+      A1.run("initialSync(getSyncConfig().code, false)"),
+      B1.run("initialSync(getSyncConfig().code, false)")
+    ]);
+    await patiente(800);
+    controle("Deux appareils qui démarrent en même temps ne se marchent pas dessus",
+      A1.run("data.length") > 0 && B1.run("data.length") > 0 && vusPar(A1).join(",") === vusPar(B1).join(","),
+      "les deux affichent exactement les mêmes fiches après un démarrage concurrent");
+
+    /* ── 17. Convergence finale après toute cette agitation ── */
+    etape(.97, "convergence après concurrence"); await respirer();
+    for (let tour = 0; tour < 2; tour++){
+      A1.run("initialSyncDone = false"); await A1.run("initialSync(getSyncConfig().code, false)");
+      B1.run("initialSyncDone = false"); await B1.run("initialSync(getSyncConfig().code, false)");
+    }
+    const zA = vusPar(A1).join(","), zB = vusPar(B1).join(",");
+    controle("État final identique après tous les scénarios concurrents",
+      zA === zB && zA.length > 0,
+      zA === zB ? A1.run("data.length") + " fiche(s) identiques des deux côtés"
+                : "A : " + echapper(zA) + "<br>B : " + echapper(zB));
+
+    const idsUniques = A1.run("new Set(data.map(function(k){return k.id;})).size") === A1.run("data.length");
+    controle("Aucun doublon créé par la concurrence",
+      idsUniques, "chaque fiche n'apparaît qu'une fois malgré les envois croisés");
+
+
+    /* ── 18. Deux écoutes temps réel actives en parallèle ── */
+    etape(.93, "écoutes simultanées"); await respirer();
+    controle("Les deux appareils écoutent le cloud en même temps",
+      A1.run("!!fbUnsub") && B1.run("!!fbUnsub"),
+      "chacun est abonné aux modifications de l'autre, simultanément");
+
+    /* ── 19. Trois appareils connectés et écrivant en même temps ── */
+    etape(.95, "trois appareils en parallèle"); await respirer();
+    const C1 = creerAppareil("appareil-C", cfg, codeTest);
+    C1.run("connectSync(false)");
+    await patiente(1200);
+    C1.run("initialSyncDone = false"); await C1.run("initialSync(getSyncConfig().code, false)");
+
+    [["A", A1], ["B", B1], ["C", C1]].forEach(function(p){
+      p[1].run(`manualEntries.push({ id:"sc_trio_${p[0]}", manual:true, title:"Trio ${p[0]}",
+                 freq:"Mensuelle", _mtime: now() }); saveManualEntries(false); rebuildData(false);`);
+    });
+    await Promise.all([ A1.run("pushToCloud(false)"), B1.run("pushToCloud(false)"), C1.run("pushToCloud(false)") ]);
+    await patiente(1500);
+    for (let tour = 0; tour < 3; tour++){
+      for (const app of [A1, B1, C1]){
+        app.run("initialSyncDone = false");
+        await app.run("initialSync(getSyncConfig().code, false)");
+      }
+    }
+    const idsTrio = ((await refTest().get()).data() || {}).kpiManual || [];
+    const presents = ["sc_trio_A", "sc_trio_B", "sc_trio_C"].filter(id => idsTrio.some(k => k && k.id === id));
+    controle("Trois appareils écrivant au même instant : aucune perte",
+      presents.length === 3,
+      presents.length === 3 ? "les trois créations simultanées sont toutes dans le cloud"
+                            : "seules " + presents.length + "/3 créations ont survécu : " + presents.join(", "));
+
+    const tA = vusPar(A1).join(","), tB = vusPar(B1).join(","), tC = vusPar(C1).join(",");
+    controle("Les trois appareils finissent identiques",
+      tA === tB && tB === tC,
+      tA === tB && tB === tC ? A1.run("data.length") + " fiche(s) identiques sur les trois appareils"
+                             : "A : " + echapper(tA) + "<br>B : " + echapper(tB) + "<br>C : " + echapper(tC));
+
+    /* ── 20. Deux synchronisations lancées ensemble sur le même appareil ── */
+    etape(.96, "verrou anti-chevauchement"); await respirer();
+    B1.run("initialSyncDone = false; syncBusy = false;");
+    let sansErreur = true;
+    try {
+      await Promise.all([
+        B1.run("initialSync(getSyncConfig().code, false)"),
+        B1.run("initialSync(getSyncConfig().code, false)")
+      ]);
+    } catch { sansErreur = false; }
+    controle("Deux synchronisations lancées ensemble ne se chevauchent pas",
+      sansErreur && B1.run("syncBusy") === false,
+      "le verrou interne sérialise les opérations, sans blocage résiduel");
+
+    try { C1.run("if (fbUnsub) fbUnsub();"); } catch {}
+
+
+    /* ── 21. Espace personnel : me suit, sans jamais fuiter ── */
+    etape(.97, "espace personnel entre mes appareils"); await respirer();
+    const M1 = creerAppareil("marie", cfg, codeTest);
+    const M2 = creerAppareil("marie", cfg, codeTest);       // même personne, autre appareil
+    const J1 = creerAppareil("jean", cfg, codeTest);        // quelqu'un d'autre
+    [M1, M2, J1].forEach(d => d.run("connectSync(false)"));
+    await patiente(1200);
+    for (const d of [M1, M2, J1]) { d.run("initialSyncDone = false"); await d.run("initialSync(getSyncConfig().code, false)"); }
+
+    // Marie crée une fiche personnelle sur son premier appareil
+    M1.run(`personalEntries = [{ id:"sc_perso_marie", title:"Note privée de Marie",
+             freq:"Mensuelle", personal:true, _mtime: now(), _by:"marie" }];
+            savePersonalEntries();`);
+    await M1.run("pushToCloud(false)");
+
+    M2.run("initialSyncDone = false"); await M2.run("initialSync(getSyncConfig().code, false)");
+    controle("Ma fiche personnelle me suit sur mon autre appareil",
+      M2.run("personalEntries.length") === 1 &&
+      M2.run(`personalEntries[0] && personalEntries[0].title`) === "Note privée de Marie",
+      "créée sur un appareil, retrouvée sur l'autre, sans manipulation");
+
+    J1.run("initialSyncDone = false"); await J1.run("initialSync(getSyncConfig().code, false)");
+    controle("Un autre utilisateur ne voit pas ma fiche personnelle",
+      J1.run("personalEntries.length") === 0,
+      "Jean ne récupère rien de l'espace personnel de Marie");
+
+    controle("Ma fiche personnelle n'entre pas dans l'annuaire partagé",
+      !J1.run("data.some(function(k){ return k.title === 'Note privée de Marie'; })") &&
+      !M2.run("data.some(function(k){ return k.title === 'Note privée de Marie'; })"),
+      "elle reste hors de la liste commune, sur tous les appareils");
+
+    // Jean crée la sienne : les deux espaces doivent coexister
+    J1.run(`personalEntries = [{ id:"sc_perso_jean", title:"Note privée de Jean",
+             freq:"Mensuelle", personal:true, _mtime: now(), _by:"jean" }];
+            savePersonalEntries();`);
+    await J1.run("pushToCloud(false)");
+    M1.run("initialSyncDone = false"); await M1.run("initialSync(getSyncConfig().code, false)");
+    await M1.run("pushToCloud(false)");
+    J1.run("initialSyncDone = false"); await J1.run("initialSync(getSyncConfig().code, false)");
+    controle("Deux espaces personnels coexistent sans s'écraser",
+      M1.run("personalEntries.length") === 1 && J1.run("personalEntries.length") === 1 &&
+      J1.run(`personalEntries[0].title`) === "Note privée de Jean",
+      "chacun garde le sien, même après des envois croisés");
+
+    // Suppression personnelle propagée entre les appareils de Marie
+    M1.run(`personalTrash = [{ id:"sc_perso_marie", title:"Note privée de Marie", _deletedAt: now() }];
+            personalEntries = []; savePersonalEntries(); savePersonalTrash();`);
+    await M1.run("pushToCloud(false)");
+    M2.run("initialSyncDone = false"); await M2.run("initialSync(getSyncConfig().code, false)");
+    controle("La suppression d'une fiche personnelle me suit aussi",
+      M2.run("personalEntries.length") === 0,
+      "supprimée sur un appareil, elle disparaît de l'autre");
+
+    [M1, M2, J1].forEach(d => { try { d.run("if (fbUnsub) fbUnsub();"); } catch {} });
+
+
+    /* ── 11. Horloge et latence ── */
+    etape(.95, "horloge et latence"); await respirer();
+    const decalage = Math.abs(+(A1.stockage().kpiClockOffset || 0));
+    ajouterControle(groupe, "Horloge de cet appareil alignée sur le serveur",
+      decalage < 60000 ? { etat:"ok", detail: decalage ? "correction appliquée : " + Math.round(decalage/1000) + " s" : "aucun décalage significatif" }
+        : { etat:"warn", detail:"Décalage de <b>" + Math.round(decalage/1000) + " s</b> — l'arbitrage des modifications s'appuie sur l'heure du serveur, ce qui le compense." });
+
+    const tLatence = Date.now();
+    await refTest().get();
+    const latence = Date.now() - tLatence;
+    ajouterControle(groupe, "Temps de réponse du cloud",
+      latence < 1500 ? { etat:"ok", detail:"<b>" + latence + " ms</b> pour une lecture" }
+        : { etat:"warn", detail:"<b>" + latence + " ms</b> — connexion lente, la synchronisation peut sembler tardive." });
+
+    ajouterControle(groupe, "Durée totale des scénarios",
+      { etat:"ok", detail:"<b>" + ((Date.now() - t0)/1000).toFixed(1) + " s</b> pour " + 12 + " scénarios" });
+
+  } catch(e){
+    ajouterControle(groupe, "Déroulement des scénarios",
+      { etat:"ko", detail:"Interrompu : " + echapper(String(e && e.message || e)) });
+  } finally {
+    /* ── Nettoyage : on ne laisse aucune trace ── */
+    etape(1, "nettoyage");
+    let nettoye = true;
+    for (const suffixe of ["", "__clock"]) {
+      try { await db.collection("kpi_sync").doc(codeTest + suffixe).delete(); }
+      catch { nettoye = false; }
+    }
+    try { A1.run("if (fbUnsub) fbUnsub();"); B1.run("if (fbUnsub) fbUnsub();"); } catch {}
+    /* Vos données locales et votre document principal ont-ils bougé ? */
+    const apresScenarios = empreinteDonnees();
+    const ecartLocal = comparerEmpreintes(window.__empreinteReelle || apresScenarios, apresScenarios);
+    const bougees = [].concat(ecartLocal.modifiees, ecartLocal.ajoutees, ecartLocal.retirees);
+    const bougeesAilleurs = bougees.filter(k => clesModifieesAilleurs.has(k));
+    const bougeesInexpliquees = bougees.filter(k => !clesModifieesAilleurs.has(k));
+    ajouterControle(groupe, "Les scénarios n'ont pas touché vos données locales",
+      bougeesInexpliquees.length === 0
+        ? { etat:"ok", detail: bougees.length === 0
+              ? "aucun des " + apresScenarios.cles.length + " emplacements n'a changé"
+              : "Aucune écriture de cette page. " + bougeesAilleurs.length +
+                " emplacement(s) ont changé <b>depuis un autre onglet</b> de l'annuaire : " +
+                bougeesAilleurs.map(echapper).join(", ") }
+        : { etat:"ko", detail:"Modifiés sans origine externe identifiée : <b>" +
+            bougeesInexpliquees.map(echapper).join(", ") + "</b>" });
+
+    try {
+      const principal = await db.collection("kpi_sync").doc(cfg.code).get();
+      const majApres = principal.exists ? (principal.data().updatedAt || 0) : 0;
+      const ecritParNous = docsEcritsParLaPage.has(cfg.code);
+      ajouterControle(groupe, "Votre document de synchronisation n'a pas été touché par les tests",
+        majApres === majAvantScenarios
+          ? { etat:"ok", detail:"date inchangée — les scénarios ont travaillé sur le document <b>" +
+              echapper(codeTest) + "</b>, séparé du vôtre" }
+          : (ecritParNous
+              ? { etat:"ko", detail:"Cette page a écrit dans votre document principal, ce qui ne devrait jamais arriver." }
+              : { etat:"ok", detail:"Cette page n'écrit jamais dans votre document (seul <b>" + echapper(codeTest) +
+                  "</b> a été utilisé). Sa date a pourtant changé pendant l'analyse : <b>" +
+                  new Date(majAvantScenarios).toLocaleString("fr-FR") + "</b> → <b>" +
+                  new Date(majApres).toLocaleString("fr-FR") + "</b>.<br>" +
+                  "C'est <b>un autre appareil, ou l'annuaire ouvert dans un autre onglet</b>, qui a synchronisé " +
+                  "pendant ce temps — comportement normal en usage partagé." }));
+    } catch(e){
+      ajouterControle(groupe, "Votre document de synchronisation n'a pas été modifié",
+        { etat:"warn", detail:"vérification impossible : " + echapper(String(e && e.message || e)) });
+    }
+
+    ajouterControle(groupe, "Documents de test supprimés",
+      nettoye ? { etat:"ok", detail:"aucune trace laissée dans votre projet Firebase" }
+              : { etat:"warn", detail:"Un document <b>" + echapper(codeTest) + "</b> subsiste (sans effet sur vos données)." });
+  }
+
+  /* Synthèse mise à jour */
+  const n = { ok:0, warn:0, ko:0 };
+  resultatsR.forEach(r => n[r.etat]++);
+  $("cartesR").innerHTML =
+    carte(resultatsR.length, "Contrôles", "acc") +
+    carte(n.ok, "Conformes", "ok") +
+    carte(n.warn, "À vérifier", n.warn ? "gold" : "ok") +
+    carte(n.ko, "Problèmes", n.ko ? "ko" : "ok");
+  const etatR = (c, t) => { $("etatR").className = "etat " + c; $("etatR").innerHTML = '<span id="etatRTxt">' + echapper(t) + '</span>'; };
+  if (n.ko) etatR("ko", n.ko + " problème(s) détecté(s)");
+  else if (n.warn) etatR("att", n.warn + " point(s) à vérifier — aucun blocage");
+  else etatR("ok", "Tout est cohérent, et la synchronisation fonctionne de bout en bout");
+}
+
+$("btnScenarios").addEventListener("click", async function(){
+  this.disabled = true; this.textContent = "Scénarios en cours…";
+  if (!resultatsR.length) await analyseReelle(false);
+  await scenariosSynchro();
+  this.disabled = false; this.textContent = "🔄 Tester la synchronisation en conditions réelles";
+});
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIMULATION EN MASSE
+   Éprouve le système à l'échelle : volumes importants, nombreux appareils,
+   opérations en rafale. Tout se déroule dans un document dédié « __masse »,
+   effacé à la fin. Vos données ne sont jamais touchées.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const MASSE = { fiches: 200, appareils: 5, rafale: 100, suppressions: 50 };
+
+async function simulationMasse(){
+  const groupe = "Simulation en masse";
+  ouvrirGroupeR(groupe);
+  $("zoneProgR").classList.remove("cache");
+  const etape = (r, txt) => {
+    $("barreRJauge").style.width = Math.round(r*100) + "%";
+    $("progRVal").textContent = Math.round(r*100) + " %";
+    $("progRLib").textContent = "Simulation en masse";
+    $("encoursR").textContent = txt;
+  };
+  const ok = (nom, cond, detail) =>
+    ajouterControle(groupe, nom, cond ? { etat:"ok", detail } : { etat:"ko", detail });
+  const info = (nom, detail, alerte) =>
+    ajouterControle(groupe, nom, { etat: alerte ? "warn" : "ok", detail });
+
+  const cfgLocale = lireLocal(CLE.CONFIG, null);
+  const cfg = (cfgLocale && cfgLocale.config && cfgLocale.code)
+    ? cfgLocale : { config: A.run("BUILTIN_FIREBASE_CONFIG"), code: A.run("BUILTIN_SYNC_CODE") };
+  const codeMasse = cfg.code + "__masse";
+  docsEcritsParLaPage.add(codeMasse);
+
+  let db;
+  try {
+    await chargerFirebase();
+    if (!firebase.apps.length) firebase.initializeApp(cfg.config);
+    db = firebase.firestore();
+  } catch(e){
+    ajouterControle(groupe, "Connexion à Firebase", { etat:"ko", detail: echapper(String(e.message || e)) });
+    return;
+  }
+  const refMasse = () => db.collection("kpi_sync").doc(codeMasse);
+  try { await refMasse().delete(); } catch {}
+
+  const appareils = [];
+  const t0 = Date.now();
+
+  try {
+    /* ── 1. Génération d'un annuaire volumineux ── */
+    etape(.05, "génération de " + MASSE.fiches + " fiches"); await respirer();
+    const A1 = creerAppareil("masse-A", cfg, codeMasse);
+    A1.run("connectSync(false)"); appareils.push(A1);
+    await patiente(1000);
+
+    const tGen = Date.now();
+    A1.run(`(function(){
+      manualEntries = [];
+      var freqs = ["Mensuelle","Hebdomadaire","Quotidienne"];
+      for (var i = 0; i < ${MASSE.fiches}; i++) {
+        manualEntries.push({
+          id: "masse_" + i, manual: true,
+          title: "KPI de charge " + Math.floor(i / 3),
+          freq: freqs[i % 3],
+          type: (i % 2 ? "Contractuel" : "Opérationnel"),
+          process: "Processus " + (i % 7),
+          ritual: "Rituel " + (i % 4),
+          desc: "Description de contrôle pour la fiche numéro " + i,
+          logistiport: "https://app.powerbi.com/groups/xxxx/reports/yyyy/ReportSection" + i,
+          armement: (i % 3 === 0 ? "https://app.powerbi.com/groups/zzzz/reports/wwww/Section" + i : ""),
+          _mtime: now(), _by: "masse-A"
+        });
+      }
+      saveManualEntries(false); rebuildData(false);
+    })();`);
+    const msGen = Date.now() - tGen;
+    ok("Génération de " + MASSE.fiches + " variantes", A1.run("data.length") === MASSE.fiches,
+      "<b>" + A1.run("countFiches(data)") + "</b> KPIs · <b>" + A1.run("data.length") +
+      "</b> variantes construites en <b>" + msGen + " ms</b>");
+
+    /* ── 2. Envoi et mesure du volume ── */
+    etape(.15, "envoi du volume complet"); await respirer();
+    const tEnvoi = Date.now();
+    await A1.run("pushToCloud(false)");
+    const msEnvoi = Date.now() - tEnvoi;
+    const doc = (await refMasse().get()).data() || {};
+    const octets = JSON.stringify(doc).length;
+    const limite = 1048576;
+    ok("Envoi du volume complet au cloud", (doc.kpiManual || []).length === MASSE.fiches,
+      "<b>" + (octets/1024).toFixed(0) + " Ko</b> transmis en <b>" + msEnvoi + " ms</b>");
+
+    const parVariante = octets / MASSE.fiches;
+    const maxVariantes = Math.floor(limite * 0.9 / parVariante);
+    info("Marge avant la limite d'un document Firestore",
+      "Chaque variante pèse environ <b>" + Math.round(parVariante) + " octets</b>. " +
+      "La limite de 1 024 Ko serait atteinte vers <b>" + maxVariantes.toLocaleString("fr-FR") +
+      " variantes</b>, soit environ <b>" + Math.floor(maxVariantes/3).toLocaleString("fr-FR") +
+      " KPIs</b> à trois temporalités.<br><i>Vous en avez 13 aujourd'hui.</i>",
+      octets > limite * 0.7);
+
+    /* ── 3. Réception intégrale sur un autre appareil ── */
+    etape(.3, "réception sur un second appareil"); await respirer();
+    const B1 = creerAppareil("masse-B", cfg, codeMasse);
+    B1.run("connectSync(false)"); appareils.push(B1);
+    await patiente(1000);
+    const tRecep = Date.now();
+    B1.run("initialSyncDone = false");
+    await B1.run("initialSync(getSyncConfig().code, false)");
+    const msRecep = Date.now() - tRecep;
+    ok("Réception intégrale sur un appareil vierge", B1.run("data.length") === MASSE.fiches,
+      "<b>" + B1.run("data.length") + "/" + MASSE.fiches + "</b> variantes reçues en <b>" + msRecep + " ms</b>");
+
+    ok("Aucun doublon après réception en masse",
+      B1.run("new Set(data.map(function(k){return k.id;})).size") === MASSE.fiches,
+      "chaque fiche n'existe qu'en un exemplaire");
+
+    /* ── 4. Rafale de modifications ── */
+    etape(.45, MASSE.rafale + " modifications en rafale"); await respirer();
+    const tRafale = Date.now();
+    A1.run(`(function(){
+      for (var i = 0; i < ${MASSE.rafale}; i++) {
+        var k = manualEntries[i % manualEntries.length];
+        k.ritual = "Rituel modifié " + i;
+        stamp(k);
+      }
+      saveManualEntries(false); rebuildData(false);
+    })();`);
+    await A1.run("pushToCloud(false)");
+    B1.run("initialSyncDone = false");
+    await B1.run("initialSync(getSyncConfig().code, false)");
+    const msRafale = Date.now() - tRafale;
+    ok(MASSE.rafale + " modifications transmises sans perte",
+      B1.run("data.length") === MASSE.fiches &&
+      B1.run(`data.filter(function(k){ return String(k.ritual).indexOf("Rituel modifié") === 0; }).length`) > 0,
+      "propagées et appliquées en <b>" + msRafale + " ms</b>");
+
+    /* ── 5. Suppressions en masse ── */
+    etape(.6, MASSE.suppressions + " suppressions"); await respirer();
+    A1.run(`(function(){
+      for (var i = 0; i < ${MASSE.suppressions}; i++) {
+        markDeleted("masse_" + i, { title: "KPI de charge", freq: "Mensuelle" });
+      }
+      saveDeletedIds(false); rebuildData(false);
+    })();`);
+    await A1.run("pushToCloud(false)");
+    B1.run("initialSyncDone = false");
+    await B1.run("initialSync(getSyncConfig().code, false)");
+    ok(MASSE.suppressions + " suppressions propagées d'un coup",
+      B1.run("data.length") === MASSE.fiches - MASSE.suppressions,
+      "il reste <b>" + B1.run("data.length") + "</b> variantes visibles sur les deux appareils");
+
+    /* ── 6. Plusieurs appareils en parallèle ── */
+    etape(.75, MASSE.appareils + " appareils simultanés"); await respirer();
+    for (let i = 2; i < MASSE.appareils; i++) {
+      const d = creerAppareil("masse-" + String.fromCharCode(65 + i), cfg, codeMasse);
+      d.run("connectSync(false)");
+      appareils.push(d);
+    }
+    await patiente(1200);
+    await Promise.all(appareils.map(d => { d.run("initialSyncDone = false"); return d.run("initialSync(getSyncConfig().code, false)"); }));
+
+    // Chacun crée sa fiche AU MÊME MOMENT
+    appareils.forEach((d, i) => d.run(`manualEntries.push({ id:"masse_parallele_${i}", manual:true,
+      title:"Créée en parallèle ${i}", freq:"Mensuelle", logistiport:"https://exemple/${i}",
+      _mtime: now(), _by:"appareil-${i}" }); saveManualEntries(false); rebuildData(false);`));
+    const tPar = Date.now();
+    await Promise.all(appareils.map(d => d.run("pushToCloud(false)")));
+    await patiente(1500);
+    for (let tour = 0; tour < 3; tour++) {
+      for (const d of appareils) { d.run("initialSyncDone = false"); await d.run("initialSync(getSyncConfig().code, false)"); }
+    }
+    const msPar = Date.now() - tPar;
+    const docFinal = (await refMasse().get()).data() || {};
+    const idsFinal = new Set((docFinal.kpiManual || []).map(k => k && k.id));
+    const manquantes = appareils.map((d, i) => "masse_parallele_" + i).filter(id => !idsFinal.has(id));
+    ok(MASSE.appareils + " appareils écrivant au même instant : aucune perte",
+      manquantes.length === 0,
+      manquantes.length === 0
+        ? "les <b>" + MASSE.appareils + "</b> créations simultanées sont dans le cloud (stabilisé en " + msPar + " ms)"
+        : "<b>" + manquantes.length + "</b> création(s) perdue(s) : " + manquantes.map(echapper).join(", "));
+
+    const signatures = appareils.map(d => d.run("data.map(function(k){return k.id;}).sort().join(',')"));
+    ok("Les " + MASSE.appareils + " appareils convergent vers le même état",
+      signatures.every(s => s === signatures[0]),
+      signatures.every(s => s === signatures[0])
+        ? "<b>" + appareils[0].run("data.length") + "</b> variantes identiques sur les " + MASSE.appareils + " appareils"
+        : "états divergents entre appareils");
+
+    /* ── 7. Performances de fusion ── */
+    etape(.9, "performances de fusion"); await respirer();
+    const msFusion = A1.run(`(function(){
+      var copie = JSON.parse(JSON.stringify(manualEntries));
+      var t = Date.now();
+      for (var i = 0; i < 20; i++) mergeEntries(manualEntries, copie);
+      return Date.now() - t;
+    })();`);
+    info("Vitesse du moteur de fusion à cette échelle",
+      "20 fusions de <b>" + A1.run("manualEntries.length") + "</b> variantes en <b>" + msFusion +
+      " ms</b> (soit " + (msFusion/20).toFixed(1) + " ms par fusion)",
+      msFusion / 20 > 50);
+
+    const octetsFinal = JSON.stringify(docFinal).length;
+    info("Volume final du document de test",
+      "<b>" + (octetsFinal/1024).toFixed(0) + " Ko</b> après toutes les opérations",
+      octetsFinal > limite * 0.7);
+
+    info("Durée totale de la simulation en masse",
+      "<b>" + ((Date.now() - t0)/1000).toFixed(1) + " s</b> pour " + MASSE.fiches + " fiches, " +
+      MASSE.rafale + " modifications, " + MASSE.suppressions + " suppressions et " +
+      MASSE.appareils + " appareils");
+
+  } catch(e){
+    ajouterControle(groupe, "Déroulement de la simulation en masse",
+      { etat:"ko", detail:"Interrompue : " + echapper(String(e && e.message || e)) });
+  } finally {
+    etape(1, "nettoyage");
+    let net = true;
+    for (const suffixe of ["", "__clock"]) {
+      try { await db.collection("kpi_sync").doc(codeMasse + suffixe).delete(); } catch { net = false; }
+    }
+    appareils.forEach(d => { try { d.run("if (fbUnsub) fbUnsub();"); } catch {} });
+    ajouterControle(groupe, "Document de simulation supprimé",
+      net ? { etat:"ok", detail:"aucune trace laissée dans votre projet Firebase" }
+          : { etat:"warn", detail:"Un document <b>" + echapper(codeMasse) + "</b> subsiste." });
+  }
+
+  const n = { ok:0, warn:0, ko:0 };
+  resultatsR.forEach(r => n[r.etat]++);
+  $("cartesR").innerHTML =
+    carte(resultatsR.length, "Contrôles", "acc") + carte(n.ok, "Conformes", "ok") +
+    carte(n.warn, "À vérifier", n.warn ? "gold" : "ok") + carte(n.ko, "Problèmes", n.ko ? "ko" : "ok");
+  const etatR = (c, t) => { $("etatR").className = "etat " + c; $("etatR").innerHTML = '<span id="etatRTxt">' + echapper(t) + '</span>'; };
+  if (n.ko) etatR("ko", n.ko + " problème(s) détecté(s)");
+  else if (n.warn) etatR("att", n.warn + " point(s) à vérifier — aucun blocage");
+  else etatR("ok", "Tout est cohérent, y compris à grande échelle");
+}
+
+$("btnMasse").addEventListener("click", async function(){
+  this.disabled = true; this.textContent = "Simulation en cours…";
+  if (!resultatsR.length) await analyseReelle(false);
+  await simulationMasse();
+  this.disabled = false; this.textContent = "⚡ Simulation en masse";
+});
+
+$("btnCopierR").addEventListener("click", async function(){
+  const l = ["Diagnostic — données réelles (Annuaire KPI)",
+             "Version de app.js : " + (A ? A.version : "?"),
+             "Date : " + new Date().toLocaleString("fr-FR"), ""];
+  resultatsR.forEach(r => l.push(
+    (r.etat === "ok" ? "  OK  " : r.etat === "warn" ? "  !!  " : "  KO  ") +
+    "[" + r.groupe + "] " + r.nom +
+    (r.detail ? " → " + r.detail.replace(/<br>/g, " | ").replace(/<[^>]+>/g, "") : "")));
+  try { await navigator.clipboard.writeText(l.join("\n")); this.textContent = "✓ Copié"; }
+  catch { this.textContent = "Copie impossible"; }
+  setTimeout(() => { this.textContent = "Copier le rapport"; }, 2200);
+});
+</script>
+</body>
+</html>

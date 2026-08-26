@@ -1,0 +1,278 @@
+<title>Vérificateur de liens Power BI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06202E; --bg-mid:#0B2D3E; --surface:#0F3548;
+  --accent:#00C4CC; --accent-dim:rgba(0,196,204,.12);
+  --gold:#FFB020; --green:#10B981; --red:#EF4444;
+  --text-1:#F0F6FA; --text-2:#8DA8B8; --text-3:#4A6578;
+  --card:#FFFFFF; --card-text:#1C2B36; --card-sub:#5A7080;
+  --border:rgba(255,255,255,.08); --radius:12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text-1);
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:0 22px 80px}
+
+header{padding:34px 0 22px;border-bottom:1px solid var(--border);margin-bottom:22px}
+h1{font-family:'DM Sans',sans-serif;font-size:27px;font-weight:700;letter-spacing:-.02em}
+.lede{color:var(--text-2);margin-top:9px;max-width:74ch}
+.lede b{color:var(--text-1);font-weight:600}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px;margin:20px 0 6px}
+.stat{background:var(--bg-mid);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px}
+.stat b{display:block;font-family:'DM Sans',sans-serif;font-size:25px;font-weight:700;
+  font-variant-numeric:tabular-nums;line-height:1}
+.stat span{display:block;margin-top:5px;font-size:12px;color:var(--text-2)}
+.stat.ok b{color:var(--green)} .stat.att b{color:var(--gold)} .stat.ko b{color:var(--red)}
+
+.barre{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:18px 0 14px}
+button,.faux-bouton{
+  background:rgba(255,255,255,.08);color:var(--text-1);border:1px solid var(--border);
+  border-radius:8px;padding:7px 13px;font-size:13px;font-family:inherit;cursor:pointer;
+  transition:background .15s ease;
+}
+button:hover{background:rgba(255,255,255,.18)}
+button.principal{background:var(--accent);border-color:var(--accent);color:#06202E;font-weight:600}
+button.principal:hover{background:#00A9B0}
+input[type=text],input[type=search]{
+  background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;
+  padding:7px 11px;color:var(--text-1);font-family:inherit;font-size:13px;
+}
+input[type=search]{min-width:230px}
+.compte{margin-left:auto;color:var(--text-2);font-size:13px}
+
+.ligne{
+  background:var(--card);color:var(--card-text);border-radius:var(--radius);
+  padding:14px 16px;margin-bottom:9px;display:grid;gap:11px;
+  grid-template-columns:32px minmax(0,1fr) auto;align-items:start;
+  border-left:4px solid transparent;
+}
+.ligne[data-verdict="bon"]{border-left-color:var(--green)}
+.ligne[data-verdict="mauvais"]{border-left-color:var(--red)}
+.num{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;text-align:center;padding-top:2px}
+.titre{font-weight:600;font-size:15px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.tag{font-size:11px;border-radius:100px;padding:2px 9px;font-weight:600;letter-spacing:.02em}
+.tag.per{background:#E6F6FA;color:#0777A0}
+.tag.freq{background:#F1F0FB;color:#5B4B9E}
+.tag.rit{background:#FDF3E3;color:#96650B}
+.meta{margin-top:6px;font-size:12.5px;color:var(--card-sub);
+  font-family:ui-monospace,'SF Mono',monospace;word-break:break-all}
+.meta .cle{color:#0777A0}
+.avert{margin-top:6px;font-size:12.5px;color:#96650B}
+.corr{margin-top:9px;display:none}
+.ligne[data-verdict="mauvais"] .corr{display:block}
+/* Champ posé sur la carte blanche : il lui faut ses propres couleurs,
+   sinon le texte saisi reste blanc sur blanc. */
+.corr input{width:100%;background:#FBFDFE;border-color:#D8E2E8;color:var(--card-text)}
+.corr input::placeholder{color:#9BB0BC}
+.corr label{display:block;font-size:12px;color:var(--card-sub);margin-bottom:4px}
+.actions{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:150px}
+.actions a{
+  display:block;text-align:center;background:#0D2747;color:#fff;text-decoration:none;
+  border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;
+}
+.actions a:hover{background:#123763}
+.choix{display:flex;gap:6px}
+.choix button{flex:1;padding:6px 8px;font-size:12.5px;background:#EEF3F6;color:var(--card-text);border-color:#D8E2E8}
+.choix button:hover{background:#DEE8EE}
+.ligne[data-verdict="bon"] .choix .oui{background:var(--green);color:#fff;border-color:var(--green)}
+.ligne[data-verdict="mauvais"] .choix .non{background:var(--red);color:#fff;border-color:var(--red)}
+
+.vide{color:var(--text-2);text-align:center;padding:36px}
+footer{margin-top:26px;padding-top:18px;border-top:1px solid var(--border);color:var(--text-3);font-size:12.5px}
+a{color:var(--accent)}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Vérificateur de liens Power BI</h1>
+    <p class="lede">
+      Un lien par ligne, tel qu'il est enregistré dans l'annuaire. <b>Ouvrez-le</b> — il s'affiche
+      dans votre navigateur, avec votre session — puis dites si c'est bien le graphique attendu.
+      Si ce n'est pas le bon, collez le lien corrigé : la page vous rendra la liste complète à
+      reporter dans l'annuaire.
+    </p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="barre">
+    <input type="search" id="recherche" placeholder="Filtrer par KPI, rituel, périmètre…">
+    <button id="btnTous">Tout afficher</button>
+    <button id="btnAJuger">À juger</button>
+    <button id="btnCorriges">Corrigés</button>
+    <button class="principal" id="btnExport">⬇ Exporter le résultat</button>
+    <span class="compte" id="compte"></span>
+  </div>
+
+  <div id="liste"></div>
+
+  <footer>
+    Vos réponses restent dans ce navigateur. La page n'envoie rien : elle ne fait qu'ouvrir vos
+    liens dans un onglet.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+const LIENS = /*__DONNEES__*/[];
+const CLE = "verifLiensPowerBI";
+
+/* ── Ce que dit l'adresse, sans rien préjuger du contenu ── */
+function analyser(lien) {
+  const s = String(lien || "");
+  const requete = s.slice(s.indexOf("?") + 1);
+  const param = n => {
+    const m = requete.match(new RegExp("(?:^|&)" + n + "=([^&]*)"));
+    return m ? decodeURIComponent(m[1]) : "";
+  };
+  const chemin = s.replace(/^https?:\/\/[^/]+/, "").split("?")[0];
+  const rapport = (chemin.match(/\/reports\/([^/]+)/) || [])[1] || "";
+  const visuel = param("visual");
+  const largeur = parseFloat(param("width")) || 0;
+  const hauteur = parseFloat(param("height")) || 0;
+  return {
+    type: visuel ? "visuel" : /^\/links\//.test(chemin) ? "lien-court" : rapport ? "page" : "inconnu",
+    rapport, visuel,
+    page: (chemin.match(/\/reports\/[^/]+\/([^/?#]+)/) || [])[1] || "",
+    largeur, hauteur,
+    ratio: hauteur ? largeur / hauteur : 0
+  };
+}
+
+let verdicts = {};
+try { verdicts = JSON.parse(localStorage.getItem(CLE)) || {}; } catch (e) { verdicts = {}; }
+const enregistrer = () => { try { localStorage.setItem(CLE, JSON.stringify(verdicts)); } catch (e) { /* ignoré */ } };
+
+let filtre = "tous";
+const esc = v => String(v == null ? "" : v)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+function visibles() {
+  const q = (document.getElementById("recherche").value || "").toLowerCase().trim();
+  return LIENS.map((l, i) => ({ l, i })).filter(({ l, i }) => {
+    const v = verdicts[i];
+    if (filtre === "juger" && v && v.avis) return false;
+    if (filtre === "corriges" && !(v && v.corrige)) return false;
+    if (!q) return true;
+    return [l.kpi, l.freq, l.rituel, l.perimetre, l.badge, l.processus]
+      .join(" ").toLowerCase().includes(q);
+  });
+}
+
+function rendre() {
+  const el = document.getElementById("liste");
+  const lignes = visibles();
+
+  el.innerHTML = lignes.length ? lignes.map(({ l, i }) => {
+    const a = analyser(l.lien);
+    const v = verdicts[i] || {};
+    const format = a.largeur ? Math.round(a.largeur) + " × " + Math.round(a.hauteur) + " px" : "";
+    const notes = [];
+    if (a.type !== "visuel") {
+      notes.push("cette adresse désigne une PAGE de rapport, pas un visuel précis");
+    } else if (a.ratio > 6) {
+      notes.push("le lien annonce un visuel " + format + " — très allongé ; à confirmer de visu");
+    }
+    return `
+      <div class="ligne" data-verdict="${esc(v.avis || "")}">
+        <div class="num">${i + 1}</div>
+        <div>
+          <div class="titre">
+            ${esc(l.kpi)}
+            <span class="tag per">${esc(l.badge)}</span>
+            ${l.freq ? `<span class="tag freq">${esc(l.freq)}</span>` : ""}
+            ${l.rituel ? `<span class="tag rit">${esc(l.rituel)}</span>` : ""}
+          </div>
+          <div class="meta">
+            ${a.visuel ? `<span class="cle">visuel</span> ${esc(a.visuel)} · ` : ""}
+            ${a.page ? `<span class="cle">page</span> ${esc(a.page)} · ` : ""}
+            ${format ? `<span class="cle">format</span> ${esc(format)}` : esc(a.type)}
+          </div>
+          ${notes.length ? `<div class="avert">⚠ ${esc(notes.join(" · "))}</div>` : ""}
+          <div class="corr">
+            <label for="corr${i}">Lien corrigé — dans Power BI : sur le visuel, « … » → Partager → Lien vers cet élément visuel</label>
+            <input type="text" id="corr${i}" value="${esc(v.corrige || "")}"
+                   placeholder="https://app.powerbi.com/groups/me/reports/…&amp;visual=…"
+                   oninput="noterCorrection(${i}, this.value)">
+          </div>
+        </div>
+        <div class="actions">
+          <a href="${esc(l.lien)}" target="_blank" rel="noopener">Ouvrir le lien ↗</a>
+          <div class="choix">
+            <button class="oui" onclick="juger(${i}, 'bon')">✓ Le bon</button>
+            <button class="non" onclick="juger(${i}, 'mauvais')">✗ Pas le bon</button>
+          </div>
+        </div>
+      </div>`;
+  }).join("") : `<p class="vide">Aucun lien ne correspond à ce filtre.</p>`;
+
+  document.getElementById("compte").textContent =
+    lignes.length + " lien(s) affiché(s) sur " + LIENS.length;
+
+  const bons = LIENS.filter((l, i) => (verdicts[i] || {}).avis === "bon").length;
+  const mauvais = LIENS.filter((l, i) => (verdicts[i] || {}).avis === "mauvais").length;
+  const corriges = LIENS.filter((l, i) => (verdicts[i] || {}).corrige).length;
+  document.getElementById("stats").innerHTML = `
+    <div class="stat"><b>${LIENS.length}</b><span>liens dans l'annuaire</span></div>
+    <div class="stat ok"><b>${bons}</b><span>confirmés bons</span></div>
+    <div class="stat ko"><b>${mauvais}</b><span>à reprendre</span></div>
+    <div class="stat att"><b>${LIENS.length - bons - mauvais}</b><span>pas encore jugés</span></div>
+    <div class="stat"><b>${corriges}</b><span>liens corrigés saisis</span></div>`;
+}
+
+function juger(i, avis) {
+  const v = verdicts[i] || (verdicts[i] = {});
+  v.avis = v.avis === avis ? "" : avis;      // recliquer annule
+  enregistrer(); rendre();
+}
+
+function noterCorrection(i, valeur) {
+  const v = verdicts[i] || (verdicts[i] = {});
+  v.corrige = valeur.trim();
+  enregistrer();
+  const bons = LIENS.filter((l, j) => (verdicts[j] || {}).avis === "bon").length;
+  const mauvais = LIENS.filter((l, j) => (verdicts[j] || {}).avis === "mauvais").length;
+  const corriges = LIENS.filter((l, j) => (verdicts[j] || {}).corrige).length;
+  const s = document.getElementById("stats").children;
+  s[1].firstElementChild.textContent = bons;
+  s[2].firstElementChild.textContent = mauvais;
+  s[3].firstElementChild.textContent = LIENS.length - bons - mauvais;
+  s[4].firstElementChild.textContent = corriges;
+}
+
+function exporter() {
+  const lignes = LIENS.map((l, i) => {
+    const v = verdicts[i] || {};
+    const a = analyser(l.lien);
+    return {
+      kpi: l.kpi, frequence: l.freq, rituel: l.rituel, perimetre: l.perimetre,
+      lien: l.lien, typeDeLien: a.type, visuel: a.visuel,
+      format: a.largeur ? Math.round(a.largeur) + "x" + Math.round(a.hauteur) : "",
+      avis: v.avis || "non jugé", lienCorrige: v.corrige || ""
+    };
+  });
+  const entetes = Object.keys(lignes[0]);
+  const csv = [entetes.join(";")].concat(
+    lignes.map(l => entetes.map(k => '"' + String(l[k]).replace(/"/g, '""') + '"').join(";"))
+  ).join("\r\n");
+
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "verification-liens-powerbi.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+document.getElementById("recherche").addEventListener("input", rendre);
+document.getElementById("btnTous").addEventListener("click", () => { filtre = "tous"; rendre(); });
+document.getElementById("btnAJuger").addEventListener("click", () => { filtre = "juger"; rendre(); });
+document.getElementById("btnCorriges").addEventListener("click", () => { filtre = "corriges"; rendre(); });
+document.getElementById("btnExport").addEventListener("click", exporter);
+rendre();
+</script>

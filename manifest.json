@@ -1,18 +1,18 @@
 {
-  "name": "TimeFlow — Pointage Pro",
-  "short_name": "TimeFlow",
-  "description": "Application de pointage et suivi des heures travaillées",
+  "name": "Annuaire KPI — IDEA",
+  "short_name": "Annuaire KPI",
+  "description": "Plateforme de pilotage KPI — Groupe IDEA",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#070B18",
-  "theme_color": "#070B18",
+  "background_color": "#06202E",
+  "theme_color": "#06202E",
   "lang": "fr",
   "icons": [
-    { "src": "Logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "Logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "Logo.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "Logo.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "logo-idea.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "logo-idea.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "logo-idea.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "logo-idea.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

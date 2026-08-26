@@ -1,0 +1,26 @@
+{
+  "name": "annuaire-kpi-idea",
+  "version": "1.0.0",
+  "description": "Annuaire des KPIs IDEA — application web autonome (PWA) avec synchronisation cloud",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "test:merge": "node --test merge.test.js",
+    "test:sync": "node --test sync.test.js",
+    "test:app": "node --test app.test.js",
+    "test:ui": "node --test app-ui.test.js",
+    "test:flows": "node --test app-flows.test.js",
+    "coverage": "node coverage.js",
+    "build:page": "node build-tests-html.js",
+    "verify:page": "node verify-tests-html.js",
+    "lint": "npx --yes eslint js/ app.js outils/",
+    "test:deck": "node --test zip.test.js selection.test.js pptx.test.js deck.test.js",
+    "smoke": "node smoke-ui.js",
+    "test:outils": "node --test outils.test.js",
+    "verifier:deck": "node outils/verifier-deck.js",
+    "build:essai": "node outils/construire-annuaire-test.js",
+    "smoke:essai": "node smoke-essai.js",
+    "relever": "node outils/relever-empreintes.js"
+  },
+  "license": "UNLICENSED"
+}
