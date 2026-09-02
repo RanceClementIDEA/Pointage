@@ -85,8 +85,15 @@ sidebarOverlay?.addEventListener('click', () => {
 ════════════════════════════════════════════ */
 const LS_KEY = () => 'tf_data_' + currentUser;
 
+const LS_TS = () => 'tfLocalTs_' + currentUser;
+const localTs = () => parseInt(localStorage.getItem(LS_TS()) || '0', 10);
+
 function saveState() {
   localStorage.setItem(LS_KEY(), JSON.stringify(S));
+  // Date de la dernière modification faite SUR CET APPAREIL : c'est elle qui
+  // permet de savoir, au lancement suivant, si le cloud est en retard.
+  if(!applyingRemoteSync)localStorage.setItem(LS_TS(), String(Date.now()));
+  _netCache={};
   scheduleAutoSync();
 }
 
@@ -168,6 +175,27 @@ function calcStreak() {
   }
   return s;
 }
+/* Net d'une journée d'après le taux effectif de SON mois. Mémorisé par mois
+   pour que l'historique reste instantané même sur des centaines de lignes. */
+let _netCache={};
+function netJourDe(ds,brut){
+  if(typeof PAIE==='undefined'||!brut)return null;
+  const mois=ds.slice(0,7);
+  const c=getContract(ds);if(!c)return null;
+  const cle=mois+'|'+(c.id||c.name);
+  if(_netCache[cle]===undefined){
+    let bm=0,hm=0;
+    Object.keys(S.punches).forEach(k=>{
+      if(!k.startsWith(mois))return;
+      const d=S.punches[k];if(!d)return;
+      bm+=calcEarn(k,d).earn;hm+=calcDay(d).net/60;
+    });
+    const cc=Object.assign({},c,{weekly:parseFloat(S.settings.weekTarget)||35});
+    _netCache[cle]=PAIE.tauxEffectifMois(cc,mois,bm,hm).taux;
+  }
+  return brut*(1-_netCache[cle]);
+}
+
 const CONTRACT_TYPES=['CDI','CDD','Intérim','Apprentissage','Professionnalisation','Alternance','Stage','Freelance','Autre'];
 
 /* ════════════════════════════════════════════
@@ -394,7 +422,7 @@ function renderManualList(){
   if(!manual.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">✏️</div><p>Aucune saisie manuelle</p></div>`;return;}
   el.innerHTML=manual.map(([ds,day])=>{
     const d=new Date(ds+'T00:00:00'),{net}=calcDay(day),{earn}=calcEarn(ds,day);
-    return `<div class="hist-item" onclick="loadManualItem('${ds}')"><div class="hist-date"><div class="hist-dm">${d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})}</div><div class="hist-ds">${ds}</div></div><div class="hist-chips">${day.em?`<span class="hchip hc-em">☀️ ${day.em}</span>`:''}${day.sm?`<span class="hchip hc-sm">🌤 ${day.sm}</span>`:''}${day.ea?`<span class="hchip hc-ea">🌇 ${day.ea}</span>`:''}${day.es?`<span class="hchip hc-es">🌙 ${day.es}</span>`:''}<span class="hchip hc-m">✏️</span></div><div class="hist-h">${minToHM(net)}</div><div class="hist-e">${earn>0?fmtMoney(earn):'—'}</div></div>`;
+    return `<div class="hist-item" onclick="loadManualItem('${ds}')"><div class="hist-date"><div class="hist-dm">${d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})}</div><div class="hist-ds">${ds}</div></div><div class="hist-chips">${day.em?`<span class="hchip hc-em">☀️ ${day.em}</span>`:''}${day.sm?`<span class="hchip hc-sm">🌤 ${day.sm}</span>`:''}${day.ea?`<span class="hchip hc-ea">🌇 ${day.ea}</span>`:''}${day.es?`<span class="hchip hc-es">🌙 ${day.es}</span>`:''}<span class="hchip hc-m">✏️</span></div><div class="hist-h">${minToHM(net)}</div><div class="hist-e">${earn>0?fmtMoney(netJourDe(ds,earn)??earn):'—'}</div></div>`;
   }).join('');
 }
 
@@ -452,7 +480,7 @@ function renderHistory(){
   if(!entries.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><p>Aucun pointage</p></div>`;return;}
   el.innerHTML=entries.map(([ds,day])=>{
     const d=new Date(ds+'T00:00:00'),{net}=calcDay(day),{earn}=calcEarn(ds,day),ok=day.em&&day.es;
-    return `<div class="hist-item" onclick="sv('calendar',null);showDayDetail('${ds}')"><div style="width:6px;height:6px;border-radius:50%;background:${ok?'var(--neon)':'var(--gold)'};flex-shrink:0;margin-top:4px"></div><div class="hist-date"><div class="hist-dm">${d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})}</div><div class="hist-ds">${ds}</div></div><div class="hist-chips">${day.em?`<span class="hchip hc-em">☀️ ${day.em}</span>`:''}${day.sm?`<span class="hchip hc-sm">🌤 ${day.sm}</span>`:''}${day.ea?`<span class="hchip hc-ea">🌇 ${day.ea}</span>`:''}${day.es?`<span class="hchip hc-es">🌙 ${day.es}</span>`:''}${day.manual?'<span class="hchip hc-m">✏️</span>':''}</div><div class="hist-h">${minToHM(net)}</div><div class="hist-e">${earn>0?fmtMoney(earn):'—'}</div></div>`;
+    return `<div class="hist-item" onclick="sv('calendar',null);showDayDetail('${ds}')"><div style="width:6px;height:6px;border-radius:50%;background:${ok?'var(--neon)':'var(--gold)'};flex-shrink:0;margin-top:4px"></div><div class="hist-date"><div class="hist-dm">${d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})}</div><div class="hist-ds">${ds}</div></div><div class="hist-chips">${day.em?`<span class="hchip hc-em">☀️ ${day.em}</span>`:''}${day.sm?`<span class="hchip hc-sm">🌤 ${day.sm}</span>`:''}${day.ea?`<span class="hchip hc-ea">🌇 ${day.ea}</span>`:''}${day.es?`<span class="hchip hc-es">🌙 ${day.es}</span>`:''}${day.manual?'<span class="hchip hc-m">✏️</span>':''}</div><div class="hist-h">${minToHM(net)}</div><div class="hist-e">${earn>0?fmtMoney(netJourDe(ds,earn)??earn):'—'}</div></div>`;
   }).join('');
 }
 
@@ -871,7 +899,7 @@ function scheduleAutoSync(){
   // qui se ferait refuser par le garde-fou et afficherait une erreur.
   if(!Object.keys(S.punches||{}).length)return;
   clearTimeout(syncDebounceHandle);
-  syncDebounceHandle=setTimeout(()=>pushToCloud(false),1500);
+  syncDebounceHandle=setTimeout(()=>{syncDebounceHandle=null;pushToCloud(false);},1500);
 }
 
 async function pushToCloud(manual){
@@ -898,7 +926,17 @@ async function pushToCloud(manual){
   }catch(err){setSyncStatusUI('error',err.message);if(manual)showToast('❌ Erreur de synchronisation',3000);}
 }
 
-function applyRemoteData(payload,fromSync){
+function applyRemoteData(payload,fromSync,force){
+  /* CONFLIT : ne jamais écraser une modification locale plus récente que le
+     document cloud. C'est le cas d'une fiche contrat corrigée puis l'app
+     fermée avant que l'envoi différé (1,5 s) n'ait eu lieu. */
+  const tsLocal=localTs(), tsCloud=Number(payload.updatedAt)||0;
+  if(!force&&tsLocal&&tsCloud&&tsCloud<tsLocal){
+    console.info('sync: cloud plus ancien que le local, envoi des modifications locales');
+    setSyncStatusUI('syncing');
+    pushToCloud(false);
+    return;
+  }
   applyingRemoteSync=true;
   if(payload.punches)   {S.punches=payload.punches;   localStorage.setItem(LS_KEY(),JSON.stringify(S));}
   if(payload.contracts) S.contracts=payload.contracts;
@@ -907,6 +945,8 @@ function applyRemoteData(payload,fromSync){
   applyingRemoteSync=false;
   // Ne pas appeler saveState() ici pour éviter la boucle de sync
   localStorage.setItem(LS_KEY(),JSON.stringify(S));
+  if(tsCloud)localStorage.setItem(LS_TS(),String(tsCloud));
+  _netCache={};
   updatePunchBtns();updateTimeline();updateDashStats();updateLiveCounters();
   renderHistory();renderManualList();
   if(!fromSync)showToast('✅ Données récupérées depuis le cloud',2500);
@@ -918,7 +958,7 @@ async function pullFromCloud(manual){
   try{
     const snap=await syncDocRef(cfg.code).get();
     if(!snap.exists){setSyncStatusUI('connected');if(manual)showToast('Aucune donnée cloud pour ce code',2800);return;}
-    applyRemoteData(snap.data(),false);setSyncStatusUI('connected');
+    applyRemoteData(snap.data(),false,manual===true);setSyncStatusUI('connected');
   }catch(err){setSyncStatusUI('error',err.message);if(manual)showToast('❌ Erreur de synchronisation',3000);}
 }
 
@@ -934,6 +974,17 @@ function listenForRemoteChanges(code){
     showToast('☁️ Données mises à jour depuis un autre appareil',2800);
   },err=>setSyncStatusUI('error',err.message));
 }
+
+/* L'envoi est différé de 1,5 s. Si l'app est fermée ou mise en arrière-plan
+   entre-temps, la modification ne partait jamais. On vide la file d'attente
+   au moment où la page disparaît. */
+function flushSync(){
+  if(!syncDebounceHandle)return;
+  clearTimeout(syncDebounceHandle);syncDebounceHandle=null;
+  try{pushToCloud(false);}catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushSync();});
+window.addEventListener('pagehide',flushSync);
 
 function connectSync(manual){
   try{
