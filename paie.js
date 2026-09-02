@@ -135,6 +135,88 @@ const PAIE = {
     return { ifm, iccp, total: ifm + iccp, brutTotal: brut + ifm + iccp, applicable: true };
   },
 
+  /* ── Taux effectif du MOIS, lissé ─────────────────────────────────────
+     Les cotisations du mois rapportées au brut du mois : un seul taux, le
+     même pour toutes les journées. Pour un apprenti, l'exonération des
+     50 % du SMIC est donc « diluée » sur tout le mois au lieu de tomber
+     d'un coup le jour du dépassement.
+
+     Le brut de référence est le mois PROJETÉ (taux horaire × heures
+     mensuelles du contrat), pour que le taux soit stable dès le 1er du
+     mois ; si le réel dépasse la projection, c'est le réel qui l'emporte,
+     afin de ne jamais sous-estimer les cotisations en fin de mois.        */
+  tauxEffectifMois(contrat, mois, brutReel, heuresReelles) {
+    const c = contrat || {};
+    const heuresMois = PAIE.heuresMensuelles(c);
+    const brutProjete = (Number(c.hourlyRate) || 0) * heuresMois;
+    const brutRef = Math.max(Number(brutReel) || 0, brutProjete);
+    const heuresRef = Math.max(Number(heuresReelles) || 0, heuresMois);
+    const r = PAIE.netDuMois(brutRef, c, mois, heuresRef);
+    return {
+      taux: brutRef > 0 ? r.cotisations / brutRef : 0,
+      brutRef, heuresRef, franchise: r.franchise, regime: r.regime,
+      source: brutRef > brutProjete ? 'réel' : 'projection',
+    };
+  },
+
+  /* Heures mensuelles de référence : 35 h/semaine → 151,67 h. */
+  heuresMensuelles(contrat) {
+    const h = Number((contrat || {}).weekly || (contrat || {}).overtimeThreshold);
+    const hebdo = h > 0 && h <= 60 ? h : 35;
+    return hebdo * 52 / 12;
+  },
+
+  /* ── Net d'UNE journée ────────────────────────────────────────────────
+     Deux modes, choisis par `contrat.repartition` :
+
+     • 'lissee' (défaut) — le taux effectif du mois s'applique à chaque
+       journée. Aucune marche : toutes les journées du mois sont amputées
+       du même pourcentage. C'est le mode demandé pour l'alternance.
+
+     • 'marginale' — ce que la journée ajoute au net du mois. Fidèle au
+       séquencement d'une fiche de paie, mais une seule journée encaisse
+       tout le franchissement du seuil.
+
+     Dans les deux cas, le NET DU MOIS affiché ailleurs reste le calcul
+     exact : seule la ventilation par journée change.
+       brutAvant / heuresAvant : le reste du mois, aujourd'hui exclu.       */
+  netDuJour(brutAvant, heuresAvant, brutJour, heuresJour, contrat, mois) {
+    const c = contrat || {};
+    if ((c.repartition || 'lissee') === 'lissee') {
+      const t = PAIE.tauxEffectifMois(
+        c, mois,
+        (Number(brutAvant) || 0) + (Number(brutJour) || 0),
+        (Number(heuresAvant) || 0) + (Number(heuresJour) || 0));
+      const brut = Math.max(0, Number(brutJour) || 0);
+      const cotisations = brut * t.taux;
+      return {
+        brut, net: brut - cotisations, cotisations,
+        tauxEffectif: t.taux * 100,
+        regime: t.regime,
+        exonere: t.taux <= 0.00005 && brut > 0,
+        mode: 'lissee', base: t.source,
+      };
+    }
+    return PAIE.netDuJourMarginal(brutAvant, heuresAvant, brutJour, heuresJour, c, mois);
+  },
+
+  netDuJourMarginal(brutAvant, heuresAvant, brutJour, heuresJour, contrat, mois) {
+    const avant = PAIE.netDuMois(brutAvant, contrat, mois, heuresAvant);
+    const apres = PAIE.netDuMois(brutAvant + brutJour, contrat, mois,
+                                 (Number(heuresAvant) || 0) + (Number(heuresJour) || 0));
+    const net = apres.net - avant.net;
+    const cotisations = apres.cotisations - avant.cotisations;
+    return {
+      brut: brutJour,
+      net: Math.max(0, net),
+      cotisations: Math.max(0, cotisations),
+      tauxEffectif: brutJour > 0 ? (1 - net / brutJour) * 100 : 0,
+      regime: apres.regime,
+      exonere: cotisations <= 0.005 && brutJour > 0,
+      mode: 'marginale',
+    };
+  },
+
   /* Brut → net sur une seule ligne, pour les aperçus. */
   apercu(tauxHoraire, contrat, heures, mois) {
     const h = Number(heures) || 151.67;

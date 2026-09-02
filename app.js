@@ -232,17 +232,28 @@ function updateLiveCounters() {
     stTxt.textContent={idle:'En attente',working:'En cours',paused:'Pause déjeuner',done:'Journée terminée'}[status];
   }
   const dayEarn=calcLiveDayEarn(), monthEarn=calcLiveMonthEarn();
+  const dayNetInfo=netDuJourCourant(dayEarn,key);
+  const dayShown=dayNetInfo?dayNetInfo.net:dayEarn;
   const c=getContract(key), rate=c?parseFloat(c.hourlyRate)||0:0;
   const earnEl=document.getElementById('todayEarnLive');
   if(earnEl){
-    earnEl.textContent=fmtMoney(dayEarn);
-    if(status==='working'&&Math.floor(dayEarn*100)!==Math.floor(_prevDayEarn*100)){
+    earnEl.textContent=fmtMoney(dayShown);
+    if(status==='working'&&Math.floor(dayShown*100)!==Math.floor(_prevDayEarn*100)){
       earnEl.classList.remove('ticking');void earnEl.offsetWidth;earnEl.classList.add('ticking');
     }
-    _prevDayEarn=dayEarn;
+    _prevDayEarn=dayShown;
   }
   const rateEl=document.getElementById('liveRateDisp');
-  if(rateEl)rateEl.textContent=rate>0&&status==='working'?`${rate.toFixed(2)} €/h · +${(rate/3600).toFixed(4)} €/sec`:'';
+  if(rateEl){
+    if(dayNetInfo&&dayEarn>0){
+      const net_h=rate*(1-dayNetInfo.tauxEffectif/100);
+      rateEl.textContent=dayNetInfo.exonere
+        ? `${fmtMoney(dayEarn)} brut · exonéré de cotisations`
+        : `${fmtMoney(dayEarn)} brut · ${net_h.toFixed(2).replace('.',',')} €/h net`;
+    } else {
+      rateEl.textContent=rate>0&&status==='working'?`${rate.toFixed(2)} €/h · +${(rate/3600).toFixed(4)} €/sec`:'';
+    }
+  }
   const monthEl=document.getElementById('sm-e');
   if(monthEl){
     monthEl.textContent=fmtMoney(monthEarn);
@@ -450,6 +461,22 @@ function renderHistory(){
 ════════════════════════════════════════════ */
 let statOffset=0;
 function statPeriodChange(){statOffset=0;renderStats();}
+
+/* Raccourcis de la période personnalisée. */
+function statPresetMois(){
+  const n=new Date();
+  document.getElementById('statFrom').value=fmtDate(new Date(n.getFullYear(),n.getMonth(),1));
+  document.getElementById('statTo').value=fmtDate(n);
+  renderStats();
+}
+function statPresetContrat(){
+  const c=getContract(todayKey());
+  if(!c){showToast('Aucun contrat en cours');return;}
+  const dates=Object.keys(S.punches).sort();
+  document.getElementById('statFrom').value=c.startDate||dates[0]||todayKey();
+  document.getElementById('statTo').value=c.endDate&&c.endDate<todayKey()?c.endDate:todayKey();
+  renderStats();
+}
 function statNav(d){statOffset=Math.min(0,statOffset+d);renderStats();}
 function statToday(){statOffset=0;renderStats();}
 
@@ -460,6 +487,25 @@ function statsNetCards(entries){
   let h=`<div class="stat-card"><div class="stat-label">🧾 Net estimé</div><div class="stat-val v-neon">${fmtMoney(p.net)}</div><div class="stat-sub">après ${fmtMoney(p.cotisations)} de cotisations</div></div>`;
   if(p.primes>0)h+=`<div class="stat-card"><div class="stat-label">📦 IFM + ICCP</div><div class="stat-val v-gold">${fmtMoney(p.primes)}</div><div class="stat-sub">brut total ${fmtMoney(p.brutTotal)}</div></div>`;
   return h;
+}
+
+/* Net de la journée en cours. Les seuils d'exonération étant mensuels,
+   on calcule ce que la journée AJOUTE au net du mois, aujourd'hui exclu. */
+function netDuJourCourant(brutJour,key){
+  if(typeof PAIE==='undefined')return null;
+  const c=getContract(key);if(!c)return null;
+  const mois=key.slice(0,7);
+  let brutAvant=0,heuresAvant=0;
+  Object.keys(S.punches).forEach(ds=>{
+    if(ds===key||!ds.startsWith(mois))return;
+    const d=S.punches[ds];if(!d)return;
+    brutAvant+=calcEarn(ds,d).earn;
+    heuresAvant+=calcDay(d).net/60;
+  });
+  const{net:minJour}=calcDay(S.punches[key]||{});
+  // weekly : l'objectif hebdomadaire réglé dans l'app, pas le seuil d'heures supp.
+  const cc=Object.assign({},c,{weekly:parseFloat(S.settings.weekTarget)||35});
+  return PAIE.netDuJour(brutAvant,heuresAvant,brutJour,minJour/60,cc,mois);
 }
 
 /* Puce « net estimé » d'un contrat, sur une base mensuelle standard. */
@@ -513,6 +559,22 @@ function renderStats(){
     lbl=ref.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
     lbl=lbl.charAt(0).toUpperCase()+lbl.slice(1);
   }
+  else if(period==='custom'){
+    const f=document.getElementById('statFrom'),t=document.getElementById('statTo');
+    if(f&&!f.value){const d=new Date(now.getFullYear(),now.getMonth(),1);f.value=fmtDate(d);}
+    if(t&&!t.value)t.value=fmtDate(now);
+    let a=f.value,b=t.value;
+    if(a&&b&&a>b){const s=a;a=b;b=s;}
+    if(a&&b){
+      const d=new Date(a+'T00:00:00'),fin=new Date(b+'T00:00:00');
+      let garde=0;
+      while(d<=fin&&garde++<3660){entries.push(fmtDate(d));d.setDate(d.getDate()+1);}
+    }
+    const opt={day:'2-digit',month:'short',year:'numeric'};
+    lbl=entries.length
+      ? `${new Date(a+'T00:00:00').toLocaleDateString('fr-FR',opt)} → ${new Date(b+'T00:00:00').toLocaleDateString('fr-FR',opt)} · ${entries.length} j.`
+      : 'Choisissez deux dates';
+  }
   else{
     const base=new Date(now.getFullYear(),now.getMonth()+statOffset*3,1);
     for(let mo=2;mo>=0;mo--){const d=new Date(base.getFullYear(),base.getMonth()-mo,1),days=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();for(let i=1;i<=days;i++){const dd=new Date(d.getFullYear(),d.getMonth(),i);if(dd<=now)entries.push(fmtDate(dd));}}
@@ -520,21 +582,66 @@ function renderStats(){
     lbl=`${first.toLocaleDateString('fr-FR',capMonth)} – ${base.toLocaleDateString('fr-FR',capMonthY)}`;
   }
   const lblEl=document.getElementById('statPeriodLbl');if(lblEl)lblEl.textContent=lbl;
-  const nextBtn=document.getElementById('statNavNext');
-  if(nextBtn){nextBtn.disabled=statOffset>=0;nextBtn.style.opacity=statOffset>=0?'.35':'1';nextBtn.style.pointerEvents=statOffset>=0?'none':'auto';}
+  const custom=period==='custom';
+  const box=document.getElementById('statCustom');if(box)box.hidden=!custom;
+  // Les flèches n'ont pas de sens sur une plage libre : on les neutralise.
+  [document.getElementById('statNavNext'),
+   document.querySelector('#view-stats .cal-nav:not(#statNavNext)')].forEach(b=>{
+    if(!b)return;
+    const off=custom||(b.id==='statNavNext'&&statOffset>=0);
+    b.disabled=off;b.style.opacity=off?'.35':'1';b.style.pointerEvents=off?'none':'auto';
+  });
   let tMin=0,tEarn=0,wDays=0,maxMin=0;const hD=[],eD=[];
   entries.forEach(ds=>{const day=S.punches[ds];if(day){const{net}=calcDay(day),{earn}=calcEarn(ds,day);tMin+=net;tEarn+=earn;if(net>0)wDays++;if(net>maxMin)maxMin=net;hD.push({date:ds,val:net});eD.push({date:ds,val:earn});}else{hD.push({date:ds,val:0});eD.push({date:ds,val:0});}});
   const avg=wDays>0?tMin/wDays:0;
   const sc=document.getElementById('statsCards');
   if(sc)sc.innerHTML=`<div class="stat-card"><div class="stat-label">⏱ Total</div><div class="stat-val v-neon">${minToHM(tMin)}</div><div class="stat-sub">${wDays} j. travaillé(s)</div></div><div class="stat-card"><div class="stat-label">💰 Gains</div><div class="stat-val v-gold">${fmtMoney(tEarn)}</div><div class="stat-sub">Sur la période</div></div><div class="stat-card"><div class="stat-label">📊 Moy./jour</div><div class="stat-val v-violet">${minToHM(avg)}</div><div class="stat-sub">Jours travaillés</div></div><div class="stat-card"><div class="stat-label">🏆 Meilleure J.</div><div class="stat-val">${minToHM(maxMin)}</div><div class="stat-sub">Record période</div></div>${statsNetCards(entries)}`;
-  renderBar('hoursChart',hD,maxMin||480,'var(--violet)',v=>minToHM(v));
-  renderBar('earnChart',eD,Math.max(...eD.map(d=>d.val),1),'var(--gold)',v=>v>0?Math.round(v)+'€':'');
+  renderBar('hoursChart',hD,'var(--violet)',v=>minToHM(v),'⏱ Heures');
+  renderBar('earnChart',eD,'var(--gold)',v=>v>0?Math.round(v)+'€':'','💰 Gains');
 }
 
-function renderBar(id,data,maxV,color,lFn){
+/* Regroupe les journées en barres lisibles SANS en écarter aucune.
+   ≤ 16 points : une barre par jour. Au-delà : une barre par semaine, puis
+   par mois. Les totaux du graphique correspondent donc toujours aux cartes
+   du dessus, quelle que soit la période choisie. */
+function bucketBars(data){
+  if(data.length<=16){
+    const b=data.map(d=>({lbl:new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}),val:d.val}));
+    b.gran='jour';return b;
+  }
+  const parSemaine=data.length<=100;
+  const acc=new Map();
+  data.forEach(d=>{
+    const dt=new Date(d.date+'T00:00:00');
+    let cle,lbl;
+    if(parSemaine){
+      const lundi=new Date(dt);lundi.setDate(dt.getDate()-((dt.getDay()||7)-1));
+      cle=fmtDate(lundi);
+      lbl=lundi.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+    }else{
+      cle=d.date.slice(0,7);
+      lbl=dt.toLocaleDateString('fr-FR',{month:'short'});
+    }
+    const e=acc.get(cle)||{lbl,val:0};
+    e.val+=d.val;acc.set(cle,e);
+  });
+  const out=[...acc.keys()].sort().map(k=>acc.get(k));
+  out.gran=parSemaine?'semaine':'mois';
+  return out;
+}
+
+function renderBar(id,data,color,lFn,titre){
   const el=document.getElementById(id);if(!el)return;
-  const show=data.length>14?data.filter((_,i,a)=>i%Math.ceil(a.length/14)===0):data;
-  el.innerHTML=`<div class="bar-chart">${show.map(d=>{const pct=maxV>0?(d.val/maxV)*100:0,lbl=new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});return`<div class="bar-col"><div class="bar-val">${d.val>0?lFn(d.val):''}</div><div class="bar-fill" style="height:${Math.max(pct,2)}%;background:linear-gradient(180deg,${color},${color}88)"></div><div class="bar-lbl">${lbl}</div></div>`;}).join('')}</div>`;
+  const show=bucketBars(data);
+  // Le titre suit le regroupement : « / jour », « / semaine » ou « / mois ».
+  const t=el.previousElementSibling;
+  if(t&&t.classList.contains('card-title')&&titre)t.textContent=`${titre} / ${show.gran}`;
+  const maxV=Math.max(...show.map(d=>d.val),0);
+  if(!show.length||maxV<=0){
+    el.innerHTML=`<div class="empty-state" style="padding:26px 0"><div class="empty-icon">📉</div><p style="font-size:12px">Aucun pointage sur cette période.</p></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="bar-chart">${show.map(d=>{const pct=(d.val/maxV)*100;return`<div class="bar-col"><div class="bar-val">${d.val>0?lFn(d.val):''}</div><div class="bar-fill" style="height:${Math.max(pct,2)}%"></div><div class="bar-lbl">${d.lbl}</div></div>`;}).join('')}</div>`;
 }
 
 /* ════════════════════════════════════════════
@@ -557,7 +664,8 @@ function openContractModal(idx=null){
   const regimeOpts=Object.keys(PAIE.REGIMES).map(k=>`<option value="${k}" ${regDef===k?'selected':''}>${PAIE.REGIMES[k]}</option>`).join('');
   const defTaux=PAIE.TAUX_COTISATIONS[regDef];
   const ifmCoche=c.ifm===undefined?(c.type==='Intérim'):!!c.ifm;
-  document.getElementById('modalContent').innerHTML=`<div class="modal-head"><div class="modal-ttl">${idx!==null?'✏️ Modifier':'📄 Nouveau contrat'}</div><button class="modal-x" onclick="closeMod()">×</button></div><div class="frow" style="grid-template-columns:1fr"><div class="fgroup"><label>Nom du contrat</label><input type="text" id="cName" value="${c.name||''}" placeholder="Ex: CDI Développeur"></div></div><div class="frow"><div class="fgroup"><label>Type</label><select id="cType"><option value="">— Type —</option>${typeOpts}</select></div><div class="fgroup"><label>Taux horaire (€/h)</label><input type="number" id="cRate" value="${c.hourlyRate||''}" step="0.01" min="0" placeholder="15.50"></div></div><div class="frow"><div class="fgroup"><label>Date début</label><input type="date" id="cStart" value="${c.startDate||''}"></div><div class="fgroup"><label>Date fin (optionnel)</label><input type="date" id="cEnd" value="${c.endDate||''}"></div></div><div class="frow"><div class="fgroup"><label>Seuil pause (h)</label><input type="number" id="cBT" value="${c.breakThreshold||6}" step="0.5" min="0"></div><div class="fgroup"><label>Durée pause (min)</label><input type="number" id="cBD" value="${c.breakDuration||30}" min="0"></div></div><div class="frow"><div class="fgroup"><label>Seuil heures supp (h/semaine, 0=off)</label><input type="number" id="cOT" value="${c.overtimeThreshold||0}" step="0.5" min="0"></div><div class="fgroup"><label>Majoration (×)</label><input type="number" id="cOR" value="${c.overtimeRate||1.25}" step="0.05" min="1"></div></div><div class="paie-sep">Du brut au net</div><div class="frow"><div class="fgroup"><label>Régime social</label><select id="cRegime" onchange="previewPaie()">${regimeOpts}</select></div><div class="fgroup"><label>Cotisations salariales (%)</label><input type="number" id="cCotis" value="${c.tauxCotisations||''}" step="0.1" min="0" max="80" placeholder="${defTaux}" oninput="previewPaie()"></div></div><div class="frow" style="grid-template-columns:1fr"><label class="modal-checkbox"><input type="checkbox" id="cIFM" ${ifmCoche?'checked':''} onchange="previewPaie()"> Primes de fin de mission (IFM 10 % + ICCP 10 %) — intérim</label></div><div id="paiePreview" class="paie-preview"></div><div style="display:flex;justify-content:flex-end;gap:7px;margin-top:6px"><button class="btn btn-ghost" onclick="closeMod()">Annuler</button><button class="btn btn-primary" onclick="saveContract(${idx})">💾 Sauvegarder</button></div>`;
+  const repart=c.repartition||'lissee';
+  document.getElementById('modalContent').innerHTML=`<div class="modal-head"><div class="modal-ttl">${idx!==null?'✏️ Modifier':'📄 Nouveau contrat'}</div><button class="modal-x" onclick="closeMod()">×</button></div><div class="frow" style="grid-template-columns:1fr"><div class="fgroup"><label>Nom du contrat</label><input type="text" id="cName" value="${c.name||''}" placeholder="Ex: CDI Développeur"></div></div><div class="frow"><div class="fgroup"><label>Type</label><select id="cType"><option value="">— Type —</option>${typeOpts}</select></div><div class="fgroup"><label>Taux horaire (€/h)</label><input type="number" id="cRate" value="${c.hourlyRate||''}" step="0.01" min="0" placeholder="15.50"></div></div><div class="frow"><div class="fgroup"><label>Date début</label><input type="date" id="cStart" value="${c.startDate||''}"></div><div class="fgroup"><label>Date fin (optionnel)</label><input type="date" id="cEnd" value="${c.endDate||''}"></div></div><div class="frow"><div class="fgroup"><label>Seuil pause (h)</label><input type="number" id="cBT" value="${c.breakThreshold||6}" step="0.5" min="0"></div><div class="fgroup"><label>Durée pause (min)</label><input type="number" id="cBD" value="${c.breakDuration||30}" min="0"></div></div><div class="frow"><div class="fgroup"><label>Seuil heures supp (h/semaine, 0=off)</label><input type="number" id="cOT" value="${c.overtimeThreshold||0}" step="0.5" min="0"></div><div class="fgroup"><label>Majoration (×)</label><input type="number" id="cOR" value="${c.overtimeRate||1.25}" step="0.05" min="1"></div></div><div class="paie-sep">Du brut au net</div><div class="frow"><div class="fgroup"><label>Régime social</label><select id="cRegime" onchange="previewPaie()">${regimeOpts}</select></div><div class="fgroup"><label>Cotisations salariales (%)</label><input type="number" id="cCotis" value="${c.tauxCotisations||''}" step="0.1" min="0" max="80" placeholder="${defTaux}" oninput="previewPaie()"></div></div><div class="frow" style="grid-template-columns:1fr"><div class="fgroup"><label>Répartition des cotisations</label><select id="cRepart" onchange="previewPaie()"><option value="lissee" ${repart!=='marginale'?'selected':''}>Lissée sur le mois (taux constant)</option><option value="marginale" ${repart==='marginale'?'selected':''}>Au franchissement du seuil</option></select></div></div><div class="frow" style="grid-template-columns:1fr"><label class="modal-checkbox"><input type="checkbox" id="cIFM" ${ifmCoche?'checked':''} onchange="previewPaie()"> Primes de fin de mission (IFM 10 % + ICCP 10 %) — intérim</label></div><div id="paiePreview" class="paie-preview"></div><div style="display:flex;justify-content:flex-end;gap:7px;margin-top:6px"><button class="btn btn-ghost" onclick="closeMod()">Annuler</button><button class="btn btn-primary" onclick="saveContract(${idx})">💾 Sauvegarder</button></div>`;
   openMod();
   previewPaie();
 }
@@ -572,7 +680,11 @@ function previewPaie(){
   const rate=parseFloat(g('cRate')?g('cRate').value:'')||0;
   if(g('cCotis'))g('cCotis').placeholder=PAIE.TAUX_COTISATIONS[regime];
   if(!rate){el.innerHTML='<span class="paie-hint">Saisissez un taux horaire brut pour voir le net estimé.</span>';return;}
-  const contrat={type,regime,tauxCotisations:tauxSaisi,ifm:g('cIFM')?g('cIFM').checked:false};
+  const contrat={type,regime,tauxCotisations:tauxSaisi,
+    ifm:g('cIFM')?g('cIFM').checked:false,
+    repartition:g('cRepart')?g('cRepart').value:'lissee',
+    hourlyRate:rate,
+    weekly:parseFloat(g('cOT')&&g('cOT').value)||parseFloat(S.settings.weekTarget)||35};
   const a=PAIE.apercu(rate,contrat,151.67,todayKey());
   const ligne=(l,v,cls)=>`<div class="paie-l ${cls||''}"><span>${l}</span><span>${v}</span></div>`;
   let h=`<div class="paie-t">Sur un mois plein (151,67 h)</div>`;
@@ -580,6 +692,16 @@ function previewPaie(){
   if(a.franchise>0)h+=ligne('Part exonérée',`− ${PAIE.euros(Math.min(a.brut,a.franchise))}`,'ok');
   h+=ligne(`Cotisations (${PAIE.nb(a.tauxCotisations)} %)`,`− ${PAIE.euros(a.cotisations)}`,'moins');
   h+=ligne('<b>Net avant impôt</b>',`<b>${PAIE.euros(a.net)}</b>`,'net');
+  if(a.franchise>0){
+    const te=PAIE.tauxEffectifMois(contrat,todayKey(),0,0);
+    h+=`<div class="paie-t">Ventilation par journée</div>`;
+    const marginale=g('cRepart')&&g('cRepart').value==='marginale';
+    h+=ligne(marginale?'Retenue par journée':'Taux lissé sur le mois',
+             marginale?`0 % puis ${PAIE.nb(a.tauxCotisations)} %`:`${PAIE.nb(te.taux*100)} %`);
+    h+=`<div class="paie-hint">${g('cRepart')&&g('cRepart').value==='marginale'
+      ? 'Les premières journées du mois sont entièrement nettes, celle qui dépasse le seuil encaisse toute la retenue.'
+      : 'Chaque journée du mois est amputée du même pourcentage. Le net du mois, lui, reste identique.'}</div>`;
+  }
   if(a.motif)h+=`<div class="paie-hint">${a.motif}</div>`;
   if(a.primes.applicable){
     h+=`<div class="paie-t">Primes de fin de mission</div>`;
@@ -592,7 +714,7 @@ function previewPaie(){
 }
 
 function saveContract(idx){
-  const c={name:document.getElementById('cName').value.trim()||'Contrat sans nom',type:document.getElementById('cType').value||'Autre',startDate:document.getElementById('cStart').value,endDate:document.getElementById('cEnd').value,hourlyRate:parseFloat(document.getElementById('cRate').value)||0,breakThreshold:parseFloat(document.getElementById('cBT').value)||6,breakDuration:parseFloat(document.getElementById('cBD').value)||30,overtimeThreshold:parseFloat(document.getElementById('cOT').value)||0,overtimeRate:parseFloat(document.getElementById('cOR').value)||1.25,regime:document.getElementById('cRegime').value||undefined,tauxCotisations:parseFloat(document.getElementById('cCotis').value)||undefined,ifm:document.getElementById('cIFM').checked,id:idx!==null?(S.contracts[idx].id||Date.now()):Date.now()};
+  const c={name:document.getElementById('cName').value.trim()||'Contrat sans nom',type:document.getElementById('cType').value||'Autre',startDate:document.getElementById('cStart').value,endDate:document.getElementById('cEnd').value,hourlyRate:parseFloat(document.getElementById('cRate').value)||0,breakThreshold:parseFloat(document.getElementById('cBT').value)||6,breakDuration:parseFloat(document.getElementById('cBD').value)||30,overtimeThreshold:parseFloat(document.getElementById('cOT').value)||0,overtimeRate:parseFloat(document.getElementById('cOR').value)||1.25,regime:document.getElementById('cRegime').value||undefined,tauxCotisations:parseFloat(document.getElementById('cCotis').value)||undefined,ifm:document.getElementById('cIFM').checked,repartition:document.getElementById('cRepart').value||'lissee',id:idx!==null?(S.contracts[idx].id||Date.now()):Date.now()};
   if(idx!==null)S.contracts[idx]=c;else S.contracts.push(c);
   saveState();closeMod();renderContracts();renderActiveContract();
   showToast(`✅ Contrat "${c.name}" sauvegardé`);
