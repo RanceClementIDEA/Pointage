@@ -742,10 +742,13 @@ function previewPaie(){
 }
 
 function saveContract(idx){
-  const c={name:document.getElementById('cName').value.trim()||'Contrat sans nom',type:document.getElementById('cType').value||'Autre',startDate:document.getElementById('cStart').value,endDate:document.getElementById('cEnd').value,hourlyRate:parseFloat(document.getElementById('cRate').value)||0,breakThreshold:parseFloat(document.getElementById('cBT').value)||6,breakDuration:parseFloat(document.getElementById('cBD').value)||30,overtimeThreshold:parseFloat(document.getElementById('cOT').value)||0,overtimeRate:parseFloat(document.getElementById('cOR').value)||1.25,regime:document.getElementById('cRegime').value||undefined,tauxCotisations:parseFloat(document.getElementById('cCotis').value)||undefined,ifm:document.getElementById('cIFM').checked,repartition:document.getElementById('cRepart').value||'lissee',id:idx!==null?(S.contracts[idx].id||Date.now()):Date.now()};
+  const c={name:document.getElementById('cName').value.trim()||'Contrat sans nom',type:document.getElementById('cType').value||'Autre',startDate:document.getElementById('cStart').value,endDate:document.getElementById('cEnd').value,hourlyRate:parseFloat(document.getElementById('cRate').value)||0,breakThreshold:parseFloat(document.getElementById('cBT').value)||6,breakDuration:parseFloat(document.getElementById('cBD').value)||30,overtimeThreshold:parseFloat(document.getElementById('cOT').value)||0,overtimeRate:parseFloat(document.getElementById('cOR').value)||1.25,regime:document.getElementById('cRegime').value||'',tauxCotisations:parseFloat(document.getElementById('cCotis').value)||0,ifm:document.getElementById('cIFM').checked,repartition:document.getElementById('cRepart').value||'lissee',id:idx!==null?(S.contracts[idx].id||Date.now()):Date.now()};
   if(idx!==null)S.contracts[idx]=c;else S.contracts.push(c);
   saveState();closeMod();renderContracts();renderActiveContract();
   showToast(`✅ Contrat "${c.name}" sauvegardé`);
+  // Envoi immédiat : une fiche contrat se modifie rarement, et attendre
+  // 1,5 s suffisait à perdre la modification si l'app était refermée.
+  flushSync();if(getSyncConfig()&&fbDb)pushToCloud(false);
 }
 
 function delContract(i){
@@ -890,7 +893,18 @@ function setSyncStatusUI(state,detail){
   const s=map[state]||map.off;el.textContent=s.text;el.className='sync-status '+s.cls;
 }
 function syncDocRef(code){return fbDb.collection('tf_pointage').doc(code);}
-function buildSyncPayload(){return{punches:S.punches,contracts:S.contracts,settings:S.settings,badges:S.badges,user:currentUser,updatedAt:Date.now()};}
+/* Firestore rejette tout document contenant une valeur `undefined` — et
+   l'échec est silencieux pour l'utilisateur. On nettoie systématiquement
+   avant l'envoi : un champ absent vaut mieux qu'une synchro cassée. */
+function sansUndefined(v){
+  if(v===undefined)return null;
+  if(v===null||typeof v!=='object')return v;
+  if(Array.isArray(v))return v.map(sansUndefined);
+  const o={};
+  Object.keys(v).forEach(k=>{if(v[k]!==undefined)o[k]=sansUndefined(v[k]);});
+  return o;
+}
+function buildSyncPayload(){return sansUndefined({punches:S.punches,contracts:S.contracts,settings:S.settings,badges:S.badges,user:currentUser,updatedAt:Date.now()});}
 
 function scheduleAutoSync(){
   const cfg=getSyncConfig();
@@ -923,7 +937,13 @@ async function pushToCloud(manual){
     await syncDocRef(cfg.code).set(payload);
     setSyncStatusUI('connected');
     if(manual)showToast(`Synchronisé ☁️ — ${Object.keys(S.punches||{}).length} jour(s) envoyés`,2500);
-  }catch(err){setSyncStatusUI('error',err.message);if(manual)showToast('❌ Erreur de synchronisation',3000);}
+  }catch(err){
+    console.error('pushToCloud:',err);
+    setSyncStatusUI('error',err.message);
+    // Toujours visible, même sur un envoi automatique : une synchro qui
+    // échoue en silence, c'est une modification perdue au prochain appareil.
+    showToast('❌ Synchro impossible : '+err.message,5000);
+  }
 }
 
 function applyRemoteData(payload,fromSync,force){

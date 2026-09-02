@@ -3,7 +3,7 @@
    est visible au rechargement suivant, au lieu de rester figée en cache.
    Hors ligne, l'app et les pointages continuent de fonctionner. */
 
-const CACHE = "timeflow-cache-v6";
+const CACHE = "timeflow-cache-v7";
 const ASSETS = [
   "./", "./index.html", "./style.css", "./app.js", "./paie.js",
   "./firebase-config.js", "./manifest.json", "./Logo.png"
