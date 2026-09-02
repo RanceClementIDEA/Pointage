@@ -60,6 +60,9 @@
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* L'attribut `hidden` du HTML doit l'emporter sur n'importe quel display
+   déclaré plus bas — sinon un `display:flex` d'auteur le rend inopérant. */
+[hidden]{display:none!important}
 html{height:100%;height:100dvh;-webkit-tap-highlight-color:transparent}
 body{
   font-family:'Inter',-apple-system,system-ui,sans-serif;

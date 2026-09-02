@@ -867,6 +867,9 @@ function buildSyncPayload(){return{punches:S.punches,contracts:S.contracts,setti
 function scheduleAutoSync(){
   const cfg=getSyncConfig();
   if(!cfg||!cfg.enabled||!fbDb||applyingRemoteSync)return;
+  // Un état local vide n'a rien à envoyer : inutile de déclencher un push
+  // qui se ferait refuser par le garde-fou et afficherait une erreur.
+  if(!Object.keys(S.punches||{}).length)return;
   clearTimeout(syncDebounceHandle);
   syncDebounceHandle=setTimeout(()=>pushToCloud(false),1500);
 }
@@ -882,15 +885,16 @@ async function pushToCloud(manual){
       const before=await syncDocRef(cfg.code).get();
       const remote=before.exists?Object.keys(before.data().punches||{}).length:0;
       if(remote>0){
-        setSyncStatusUI('error',`envoi bloqué — ${remote} jour(s) dans le cloud, 0 en local`);
-        showToast(`⛔ Envoi bloqué : ${remote} jour(s) dans le cloud et rien en local. Utilisez « ⬇️ Récupérer ».`,5200);
+        setSyncStatusUI('syncing');
+        showToast(`⛔ Envoi refusé : ${remote} jour(s) dans le cloud, rien sur cet appareil. Récupération en cours…`,4200);
+        await pullFromCloud(false);           // on répare au lieu de refuser
         return;
       }
     }
     const payload=buildSyncPayload();lastSyncPushAt=payload.updatedAt;
     await syncDocRef(cfg.code).set(payload);
     setSyncStatusUI('connected');
-    if(manual)showToast('Synchronisé ☁️ — données envoyées',2500);
+    if(manual)showToast(`Synchronisé ☁️ — ${Object.keys(S.punches||{}).length} jour(s) envoyés`,2500);
   }catch(err){setSyncStatusUI('error',err.message);if(manual)showToast('❌ Erreur de synchronisation',3000);}
 }
 
@@ -953,6 +957,11 @@ function connectSync(manual){
     }
     listenForRemoteChanges(cfg.code);
     connectedSyncCode=cfg.code;setSyncStatusUI('connected');
+    /* Appareil vide alors qu'un code est connu : on va chercher les données
+       tout de suite au lieu d'attendre le listener temps réel. Sur réseau
+       lent, l'écran restait sinon à zéro plusieurs secondes — et le premier
+       enregistrement partait en écrasement (bloqué par le garde-fou). */
+    if(!Object.keys(S.punches||{}).length)pullFromCloud(false);
     if(manual)showToast('Connecté ☁️ — code : '+cfg.code,2800);
   }catch(err){console.error('connectSync:',err);setSyncStatusUI('error',err.message);if(manual)showToast('❌ Échec de connexion',3000);}
 }
