@@ -1,26 +1,48 @@
-const CACHE_NAME = "timeflow-cache-v1";
+/* TimeFlow — service worker
+   Réseau d'abord, cache en secours : une mise à jour poussée sur GitHub Pages
+   est visible au rechargement suivant, au lieu de rester figée en cache.
+   Hors ligne, l'app et les pointages continuent de fonctionner. */
+
+const CACHE = "timeflow-cache-v4";
 const ASSETS = [
-  "./", "./index.html", "./style.css", "./app.js",
-  "./Logo.png", "./manifest.json"
+  "./", "./index.html", "./style.css", "./app.js", "./paie.js",
+  "./firebase-config.js", "./manifest.json", "./Logo.png"
 ];
+
+/* Mise en cache fichier par fichier : si l'un d'eux manque (oubli au dépôt),
+   l'installation continue au lieu d'échouer en bloc — cache.addAll() rejette
+   la promesse entière dès qu'une seule requête échoue, et l'app perdrait
+   alors tout son fonctionnement hors ligne. */
 self.addEventListener("install", e => {
-  self.skipWaiting();
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => Promise.all(ASSETS.map(a => c.add(a).catch(() => null))))
+      .then(() => self.skipWaiting())
+  );
 });
+
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
+
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
+  // Firestore, polices Google : jamais interceptés, jamais mis en cache.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
+
   e.respondWith(
-    fetch(e.request).then(r => {
-      const cl = r.clone();
-      caches.open(CACHE_NAME).then(c => { if (cl.ok) c.put(e.request, cl); });
-      return r;
-    }).catch(() => caches.match(e.request).then(c => c || caches.match("./index.html")))
+    fetch(e.request)
+      .then(res => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        }
+        return res;
+      })
+      .catch(() => caches.match(e.request).then(hit => hit || caches.match("./index.html")))
   );
 });

@@ -7,7 +7,10 @@
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#070B18">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#070B18" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F4F5FA" media="(prefers-color-scheme: light)">
+  <meta name="description" content="TimeFlow — pointage, suivi des heures et des gains, hors ligne et synchronisé.">
   <link rel="icon" type="image/png" href="Logo.png">
   <link rel="apple-touch-icon" href="Logo.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +18,7 @@
   <meta name="apple-mobile-web-app-title" content="TimeFlow">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -25,7 +28,7 @@
   <div class="login-card">
     <div class="login-brand">
       <div class="login-logo-wrap">
-        <img src="Logo.png" alt="TimeFlow" class="login-logo"
+        <img src="Logo.png" alt="" width="512" height="512" decoding="async" class="login-logo"
           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
         <div class="login-logo-fallback" style="display:none">⏱</div>
       </div>
@@ -56,7 +59,7 @@
   <!-- SIDEBAR -->
   <aside id="sidebar">
     <div class="sidebar-header">
-      <img src="Logo.png" alt="TimeFlow" class="sidebar-logo"
+      <img src="Logo.png" alt="" width="512" height="512" decoding="async" class="sidebar-logo"
         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <div class="sidebar-logo-fallback" style="display:none">⏱</div>
       <span class="sidebar-title">TimeFlow</span>
@@ -68,7 +71,7 @@
         <span class="user-name" id="userInfo">—</span>
         <span class="user-role">Utilisateur</span>
       </div>
-      <button id="logoutBtn" title="Déconnexion" class="btn-logout">
+      <button id="logoutBtn" title="Déconnexion" aria-label="Déconnexion" class="btn-logout">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
           <polyline points="16 17 21 12 16 7"/>
@@ -127,7 +130,7 @@
 
     <!-- TOPBAR -->
     <div class="topbar">
-      <button class="sidebar-toggle" onclick="toggleSidebar()">
+      <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Ouvrir le menu">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
@@ -137,7 +140,7 @@
         <div class="topbar-sub"  id="topSub"></div>
       </div>
       <div class="topbar-right">
-        <div class="live-clock" id="liveClock">00:00:00</div>
+        <div class="live-clock" id="liveClock" aria-label="Heure courante">00:00:00</div>
       </div>
     </div>
 
@@ -242,9 +245,9 @@
       <div class="view" id="view-calendar">
         <div class="card" style="flex-shrink:0">
           <div class="cal-header">
-            <button class="cal-nav" onclick="calNav(-1)">‹</button>
+            <button class="cal-nav" onclick="calNav(-1)" aria-label="Mois précédent">‹</button>
             <div class="cal-month-lbl" id="calLabel">—</div>
-            <button class="cal-nav" onclick="calNav(1)">›</button>
+            <button class="cal-nav" onclick="calNav(1)" aria-label="Mois suivant">›</button>
             <button class="btn btn-ghost btn-sm" onclick="calToday()">Auj.</button>
           </div>
           <div class="cal-grid" id="calGrid"></div>
@@ -253,7 +256,7 @@
         <div class="card" id="calDetail" style="display:none;flex-shrink:0">
           <div class="section-hdr">
             <div class="section-title" id="calDetailTitle">—</div>
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('calDetail').style.display='none'">✕</button>
+            <button class="btn btn-ghost btn-sm" aria-label="Fermer le détail du jour" onclick="document.getElementById('calDetail').style.display='none'">✕</button>
           </div>
           <div id="calDetailContent"></div>
         </div>
@@ -281,9 +284,9 @@
               <option value="month">Mois</option>
               <option value="3m">3 mois</option>
             </select>
-            <button class="cal-nav" onclick="statNav(-1)">‹</button>
+            <button class="cal-nav" onclick="statNav(-1)" aria-label="Période précédente">‹</button>
             <div id="statPeriodLbl" style="font-family:'Sora',sans-serif;font-weight:700;font-size:13px;color:var(--text1);min-width:120px;text-align:center">—</div>
-            <button class="cal-nav" id="statNavNext" onclick="statNav(1)">›</button>
+            <button class="cal-nav" id="statNavNext" onclick="statNav(1)" aria-label="Période suivante">›</button>
             <button class="btn btn-ghost btn-sm" onclick="statToday()">Auj.</button>
           </div>
         </div>
@@ -324,6 +327,30 @@
       </div>
 
     </main>
+
+    <!-- BARRE D'ONGLETS (mobile) — mêmes data-view que la sidebar -->
+    <nav class="tabbar" aria-label="Navigation principale">
+      <button class="nav-btn active" data-view="dashboard" onclick="sv('dashboard',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Aujourd'hui
+      </button>
+      <button class="nav-btn" data-view="calendar" onclick="sv('calendar',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Calendrier
+      </button>
+      <button class="nav-btn" data-view="history" onclick="sv('history',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Historique
+      </button>
+      <button class="nav-btn" data-view="stats" onclick="sv('stats',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Stats
+      </button>
+      <button class="nav-btn" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+        Plus
+      </button>
+    </nav>
   </div>
 </div>
 
@@ -332,7 +359,7 @@
   <div class="modal-card">
     <div class="modal-header">
       <h3>☁️ Synchronisation cloud</h3>
-      <button id="closeSyncModalBtn" class="modal-close">✕</button>
+      <button id="closeSyncModalBtn" class="modal-close" aria-label="Fermer">✕</button>
     </div>
     <p class="modal-sub">
       Synchronise vos pointages, contrats et paramètres entre tous vos appareils
@@ -364,6 +391,10 @@
       <button id="pullSyncBtn"       class="btn-secondary">⬇️ Récupérer</button>
       <button id="disconnectSyncBtn" class="btn-secondary">🔌 Désactiver</button>
     </div>
+    <p class="modal-sub sync-hint">
+      <b>⬇️ Récupérer</b> remplace les données de cet appareil par celles du cloud.
+      <b>⬆️ Envoyer</b> fait l'inverse — refusé si cet appareil est vide alors que le cloud ne l'est pas.
+    </p>
   </div>
 </div>
 
@@ -371,11 +402,18 @@
 <div id="modalBg" onclick="closeMod(event)"><div class="modal" id="modalContent"></div></div>
 
 <!-- TOAST -->
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <!-- Firebase (compat — même version que l'annuaire KPI) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="paie.js"></script>
 <script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => {}));
+  }
+</script>
 </body>
 </html>

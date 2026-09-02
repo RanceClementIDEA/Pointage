@@ -1,39 +1,43 @@
-// ════════════════════════════════════════════
-// RÈGLES FIRESTORE — TimeFlow
-// À coller dans Firebase Console →
-// Firestore Database → Règles
-// ════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════
+//  RÈGLES FIRESTORE — TimeFlow (v1 et v2 mobile)
+//  À coller dans : Firebase Console → Firestore Database → Règles
+//
+//  ⚠️ Remplace le firestore.rules actuel du dépôt, qui décrit une
+//  architecture authentifiée (users/{uid}, request.auth != null) que
+//  l'application n'utilise pas : ni le v1 ni le v2 ne chargent
+//  firebase-auth. Le coller couperait toute la synchronisation.
+//
+//  Les deux versions partagent le document `tf_pointage/{code}`.
+//  L'accès est protégé par la confidentialité du code de synchro,
+//  pas par l'authentification — comme en v1.
+// ════════════════════════════════════════════════════════════════════
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Usernames (réservation globale) ──
-    // Lecture ouverte : nécessaire pour vérifier la dispo AVANT la création du compte
-    // Écriture : uniquement par le propriétaire du compte
-    match /usernames/{username} {
-      allow read:   if true;  // lecture publique pour vérifier la disponibilité
-      allow create: if request.auth != null
-                    && request.resource.data.uid == request.auth.uid;
-      allow delete: if request.auth != null
-                    && resource.data.uid == request.auth.uid;
-      allow update: if false;
+    // Règle en vigueur aujourd'hui, celle sous laquelle l'app tourne déjà.
+    match /tf_pointage/{code} {
+      allow read, write: if true;
     }
 
-    // ── Données utilisateur ──
-    // Chaque utilisateur ne peut lire/écrire QUE ses propres données
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      // Sous-collection pointages
-      match /punches/{date} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Sous-collection contrats
-      match /contracts/{contractId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
+    // Tout le reste est fermé.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
+
+// ────────────────────────────────────────────────────────────────────
+//  DURCISSEMENT OPTIONNEL — à tester avant de le mettre en production
+//  (Firebase Console → Firestore → Règles → onglet « Terrain de jeu »).
+//  Refuse les codes trop courts et les documents qui ne ressemblent pas
+//  à un payload TimeFlow. Le v1 et le v2 envoient tous deux les clés
+//  punches / contracts / settings / badges / user / updatedAt.
+//
+//    match /tf_pointage/{code} {
+//      allow read: if true;
+//      allow write: if code.size() >= 4
+//                   && request.resource.data.keys().hasAll(['punches', 'updatedAt']);
+//    }
+// ────────────────────────────────────────────────────────────────────

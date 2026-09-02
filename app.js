@@ -168,7 +168,7 @@ function calcStreak() {
   }
   return s;
 }
-const CONTRACT_TYPES=['CDI','CDD','Intérim','Freelance','Stage','Alternance','Autre'];
+const CONTRACT_TYPES=['CDI','CDD','Intérim','Apprentissage','Professionnalisation','Alternance','Stage','Freelance','Autre'];
 
 /* ════════════════════════════════════════════
    CLOCK — chaque seconde
@@ -325,7 +325,7 @@ function renderActiveContract() {
   if(!el)return;
   if(!c){el.innerHTML=`<div class="empty-state" style="padding:12px 0"><div class="empty-icon" style="font-size:22px">📋</div><p style="font-size:12px">Aucun contrat actif.</p></div>`;return;}
   const tCls='ct-'+(c.type||'Autre');
-  el.innerHTML=`<div class="ctype-badge ${tCls}">${c.type||'Autre'}</div><div class="cname" style="font-size:12px">${c.name}</div><div class="cperiod">${c.startDate||'—'} → ${c.endDate||'En cours'}</div><div class="cchips"><div class="cchip rate">💰 ${c.hourlyRate} €/h</div><div class="cchip">⏸ ${c.breakDuration}min si ≥${c.breakThreshold}h</div>${c.overtimeThreshold?`<div class="cchip">🔥 ×${c.overtimeRate} après ${c.overtimeThreshold}h/sem</div>`:''}<div class="cchip active">✅ Actif</div></div>`;
+  el.innerHTML=`<div class="ctype-badge ${tCls}">${c.type||'Autre'}</div><div class="cname" style="font-size:12px">${c.name}</div><div class="cperiod">${c.startDate||'—'} → ${c.endDate||'En cours'}</div><div class="cchips"><div class="cchip rate">💰 ${c.hourlyRate} €/h brut</div>${netChip(c)}<div class="cchip">⏸ ${c.breakDuration}min si ≥${c.breakThreshold}h</div>${c.overtimeThreshold?`<div class="cchip">🔥 ×${c.overtimeRate} après ${c.overtimeThreshold}h/sem</div>`:''}<div class="cchip active">✅ Actif</div></div>`;
 }
 
 /* ════════════════════════════════════════════
@@ -453,6 +453,48 @@ function statPeriodChange(){statOffset=0;renderStats();}
 function statNav(d){statOffset=Math.min(0,statOffset+d);renderStats();}
 function statToday(){statOffset=0;renderStats();}
 
+/* Cartes « net » et « primes » ajoutées à la volée aux statistiques. */
+function statsNetCards(entries){
+  const p=netPeriode(entries);
+  if(!p||!p.brut)return '';
+  let h=`<div class="stat-card"><div class="stat-label">🧾 Net estimé</div><div class="stat-val v-neon">${fmtMoney(p.net)}</div><div class="stat-sub">après ${fmtMoney(p.cotisations)} de cotisations</div></div>`;
+  if(p.primes>0)h+=`<div class="stat-card"><div class="stat-label">📦 IFM + ICCP</div><div class="stat-val v-gold">${fmtMoney(p.primes)}</div><div class="stat-sub">brut total ${fmtMoney(p.brutTotal)}</div></div>`;
+  return h;
+}
+
+/* Puce « net estimé » d'un contrat, sur une base mensuelle standard. */
+function netChip(c){
+  if(typeof PAIE==='undefined'||!c||!c.hourlyRate)return '';
+  const a=PAIE.apercu(c.hourlyRate,c,151.67,todayKey());
+  const parH=a.net/a.heures;
+  return `<div class="cchip net">🧾 ${parH.toFixed(2).replace('.',',')} €/h net</div>`;
+}
+
+/* Net d'une période : le calcul se fait MOIS PAR MOIS, car les seuils
+   d'exonération (apprenti, stagiaire) sont mensuels. */
+function netPeriode(entries){
+  if(typeof PAIE==='undefined')return null;
+  const parMois={};
+  entries.forEach(ds=>{
+    const d=S.punches[ds];if(!d)return;
+    const{net:min}=calcDay(d),{earn}=calcEarn(ds,d);
+    if(!earn&&!min)return;
+    const m=ds.slice(0,7);
+    (parMois[m]=parMois[m]||{brut:0,heures:0,ds:ds}).brut+=earn;
+    parMois[m].heures+=min/60;
+  });
+  let brut=0,cotis=0,net=0,ifm=0,iccp=0,exo=0;
+  Object.keys(parMois).forEach(m=>{
+    const b=parMois[m],c=getContract(b.ds)||{};
+    const r=PAIE.netDuMois(b.brut,c,m,b.heures);
+    const p=PAIE.primesInterim(b.brut,c);
+    brut+=r.brut;cotis+=r.cotisations;net+=r.net;
+    exo+=Math.min(r.brut,r.franchise);
+    ifm+=p.ifm;iccp+=p.iccp;
+  });
+  return{brut,cotisations:cotis,net,exonere:exo,ifm,iccp,primes:ifm+iccp,brutTotal:brut+ifm+iccp};
+}
+
 function renderStats(){
   const period=document.getElementById('statPeriod').value,now=new Date();
   let entries=[],lbl='';
@@ -484,7 +526,7 @@ function renderStats(){
   entries.forEach(ds=>{const day=S.punches[ds];if(day){const{net}=calcDay(day),{earn}=calcEarn(ds,day);tMin+=net;tEarn+=earn;if(net>0)wDays++;if(net>maxMin)maxMin=net;hD.push({date:ds,val:net});eD.push({date:ds,val:earn});}else{hD.push({date:ds,val:0});eD.push({date:ds,val:0});}});
   const avg=wDays>0?tMin/wDays:0;
   const sc=document.getElementById('statsCards');
-  if(sc)sc.innerHTML=`<div class="stat-card"><div class="stat-label">⏱ Total</div><div class="stat-val v-neon">${minToHM(tMin)}</div><div class="stat-sub">${wDays} j. travaillé(s)</div></div><div class="stat-card"><div class="stat-label">💰 Gains</div><div class="stat-val v-gold">${fmtMoney(tEarn)}</div><div class="stat-sub">Sur la période</div></div><div class="stat-card"><div class="stat-label">📊 Moy./jour</div><div class="stat-val v-violet">${minToHM(avg)}</div><div class="stat-sub">Jours travaillés</div></div><div class="stat-card"><div class="stat-label">🏆 Meilleure J.</div><div class="stat-val">${minToHM(maxMin)}</div><div class="stat-sub">Record période</div></div>`;
+  if(sc)sc.innerHTML=`<div class="stat-card"><div class="stat-label">⏱ Total</div><div class="stat-val v-neon">${minToHM(tMin)}</div><div class="stat-sub">${wDays} j. travaillé(s)</div></div><div class="stat-card"><div class="stat-label">💰 Gains</div><div class="stat-val v-gold">${fmtMoney(tEarn)}</div><div class="stat-sub">Sur la période</div></div><div class="stat-card"><div class="stat-label">📊 Moy./jour</div><div class="stat-val v-violet">${minToHM(avg)}</div><div class="stat-sub">Jours travaillés</div></div><div class="stat-card"><div class="stat-label">🏆 Meilleure J.</div><div class="stat-val">${minToHM(maxMin)}</div><div class="stat-sub">Record période</div></div>${statsNetCards(entries)}`;
   renderBar('hoursChart',hD,maxMin||480,'var(--violet)',v=>minToHM(v));
   renderBar('earnChart',eD,Math.max(...eD.map(d=>d.val),1),'var(--gold)',v=>v>0?Math.round(v)+'€':'');
 }
@@ -511,12 +553,46 @@ function renderContracts(){
 function openContractModal(idx=null){
   const c=idx!==null?S.contracts[idx]:{};
   const typeOpts=CONTRACT_TYPES.map(t=>`<option value="${t}" ${c.type===t?'selected':''}>${t}</option>`).join('');
-  document.getElementById('modalContent').innerHTML=`<div class="modal-head"><div class="modal-ttl">${idx!==null?'✏️ Modifier':'📄 Nouveau contrat'}</div><button class="modal-x" onclick="closeMod()">×</button></div><div class="frow" style="grid-template-columns:1fr"><div class="fgroup"><label>Nom du contrat</label><input type="text" id="cName" value="${c.name||''}" placeholder="Ex: CDI Développeur"></div></div><div class="frow"><div class="fgroup"><label>Type</label><select id="cType"><option value="">— Type —</option>${typeOpts}</select></div><div class="fgroup"><label>Taux horaire (€/h)</label><input type="number" id="cRate" value="${c.hourlyRate||''}" step="0.01" min="0" placeholder="15.50"></div></div><div class="frow"><div class="fgroup"><label>Date début</label><input type="date" id="cStart" value="${c.startDate||''}"></div><div class="fgroup"><label>Date fin (optionnel)</label><input type="date" id="cEnd" value="${c.endDate||''}"></div></div><div class="frow"><div class="fgroup"><label>Seuil pause (h)</label><input type="number" id="cBT" value="${c.breakThreshold||6}" step="0.5" min="0"></div><div class="fgroup"><label>Durée pause (min)</label><input type="number" id="cBD" value="${c.breakDuration||30}" min="0"></div></div><div class="frow"><div class="fgroup"><label>Seuil heures supp (h/semaine, 0=off)</label><input type="number" id="cOT" value="${c.overtimeThreshold||0}" step="0.5" min="0"></div><div class="fgroup"><label>Majoration (×)</label><input type="number" id="cOR" value="${c.overtimeRate||1.25}" step="0.05" min="1"></div></div><div style="display:flex;justify-content:flex-end;gap:7px;margin-top:6px"><button class="btn btn-ghost" onclick="closeMod()">Annuler</button><button class="btn btn-primary" onclick="saveContract(${idx})">💾 Sauvegarder</button></div>`;
+  const regDef=c.regime||PAIE.regimeParDefaut(c.type);
+  const regimeOpts=Object.keys(PAIE.REGIMES).map(k=>`<option value="${k}" ${regDef===k?'selected':''}>${PAIE.REGIMES[k]}</option>`).join('');
+  const defTaux=PAIE.TAUX_COTISATIONS[regDef];
+  const ifmCoche=c.ifm===undefined?(c.type==='Intérim'):!!c.ifm;
+  document.getElementById('modalContent').innerHTML=`<div class="modal-head"><div class="modal-ttl">${idx!==null?'✏️ Modifier':'📄 Nouveau contrat'}</div><button class="modal-x" onclick="closeMod()">×</button></div><div class="frow" style="grid-template-columns:1fr"><div class="fgroup"><label>Nom du contrat</label><input type="text" id="cName" value="${c.name||''}" placeholder="Ex: CDI Développeur"></div></div><div class="frow"><div class="fgroup"><label>Type</label><select id="cType"><option value="">— Type —</option>${typeOpts}</select></div><div class="fgroup"><label>Taux horaire (€/h)</label><input type="number" id="cRate" value="${c.hourlyRate||''}" step="0.01" min="0" placeholder="15.50"></div></div><div class="frow"><div class="fgroup"><label>Date début</label><input type="date" id="cStart" value="${c.startDate||''}"></div><div class="fgroup"><label>Date fin (optionnel)</label><input type="date" id="cEnd" value="${c.endDate||''}"></div></div><div class="frow"><div class="fgroup"><label>Seuil pause (h)</label><input type="number" id="cBT" value="${c.breakThreshold||6}" step="0.5" min="0"></div><div class="fgroup"><label>Durée pause (min)</label><input type="number" id="cBD" value="${c.breakDuration||30}" min="0"></div></div><div class="frow"><div class="fgroup"><label>Seuil heures supp (h/semaine, 0=off)</label><input type="number" id="cOT" value="${c.overtimeThreshold||0}" step="0.5" min="0"></div><div class="fgroup"><label>Majoration (×)</label><input type="number" id="cOR" value="${c.overtimeRate||1.25}" step="0.05" min="1"></div></div><div class="paie-sep">Du brut au net</div><div class="frow"><div class="fgroup"><label>Régime social</label><select id="cRegime" onchange="previewPaie()">${regimeOpts}</select></div><div class="fgroup"><label>Cotisations salariales (%)</label><input type="number" id="cCotis" value="${c.tauxCotisations||''}" step="0.1" min="0" max="80" placeholder="${defTaux}" oninput="previewPaie()"></div></div><div class="frow" style="grid-template-columns:1fr"><label class="modal-checkbox"><input type="checkbox" id="cIFM" ${ifmCoche?'checked':''} onchange="previewPaie()"> Primes de fin de mission (IFM 10 % + ICCP 10 %) — intérim</label></div><div id="paiePreview" class="paie-preview"></div><div style="display:flex;justify-content:flex-end;gap:7px;margin-top:6px"><button class="btn btn-ghost" onclick="closeMod()">Annuler</button><button class="btn btn-primary" onclick="saveContract(${idx})">💾 Sauvegarder</button></div>`;
   openMod();
+  previewPaie();
+}
+
+/* Aperçu vivant : ce que donne le taux horaire saisi sur un mois plein. */
+function previewPaie(){
+  const el=document.getElementById('paiePreview');if(!el||typeof PAIE==='undefined')return;
+  const g=id=>document.getElementById(id);
+  const type=g('cType')?g('cType').value:'';
+  const regime=g('cRegime')?g('cRegime').value:PAIE.regimeParDefaut(type);
+  const tauxSaisi=parseFloat(g('cCotis')?g('cCotis').value:'')||0;
+  const rate=parseFloat(g('cRate')?g('cRate').value:'')||0;
+  if(g('cCotis'))g('cCotis').placeholder=PAIE.TAUX_COTISATIONS[regime];
+  if(!rate){el.innerHTML='<span class="paie-hint">Saisissez un taux horaire brut pour voir le net estimé.</span>';return;}
+  const contrat={type,regime,tauxCotisations:tauxSaisi,ifm:g('cIFM')?g('cIFM').checked:false};
+  const a=PAIE.apercu(rate,contrat,151.67,todayKey());
+  const ligne=(l,v,cls)=>`<div class="paie-l ${cls||''}"><span>${l}</span><span>${v}</span></div>`;
+  let h=`<div class="paie-t">Sur un mois plein (151,67 h)</div>`;
+  h+=ligne('Brut',PAIE.euros(a.brut));
+  if(a.franchise>0)h+=ligne('Part exonérée',`− ${PAIE.euros(Math.min(a.brut,a.franchise))}`,'ok');
+  h+=ligne(`Cotisations (${PAIE.nb(a.tauxCotisations)} %)`,`− ${PAIE.euros(a.cotisations)}`,'moins');
+  h+=ligne('<b>Net avant impôt</b>',`<b>${PAIE.euros(a.net)}</b>`,'net');
+  if(a.motif)h+=`<div class="paie-hint">${a.motif}</div>`;
+  if(a.primes.applicable){
+    h+=`<div class="paie-t">Primes de fin de mission</div>`;
+    h+=ligne('IFM (10 %)',`+ ${PAIE.euros(a.primes.ifm)}`,'ok');
+    h+=ligne('ICCP (10 % sur brut + IFM)',`+ ${PAIE.euros(a.primes.iccp)}`,'ok');
+    h+=ligne('<b>Brut total mission</b>',`<b>${PAIE.euros(a.primes.brutTotal)}</b>`,'net');
+  }
+  h+=`<div class="paie-hint">Estimation avant prélèvement à la source. Barème ${PAIE.BAREME}.</div>`;
+  el.innerHTML=h;
 }
 
 function saveContract(idx){
-  const c={name:document.getElementById('cName').value.trim()||'Contrat sans nom',type:document.getElementById('cType').value||'Autre',startDate:document.getElementById('cStart').value,endDate:document.getElementById('cEnd').value,hourlyRate:parseFloat(document.getElementById('cRate').value)||0,breakThreshold:parseFloat(document.getElementById('cBT').value)||6,breakDuration:parseFloat(document.getElementById('cBD').value)||30,overtimeThreshold:parseFloat(document.getElementById('cOT').value)||0,overtimeRate:parseFloat(document.getElementById('cOR').value)||1.25,id:idx!==null?(S.contracts[idx].id||Date.now()):Date.now()};
+  const c={name:document.getElementById('cName').value.trim()||'Contrat sans nom',type:document.getElementById('cType').value||'Autre',startDate:document.getElementById('cStart').value,endDate:document.getElementById('cEnd').value,hourlyRate:parseFloat(document.getElementById('cRate').value)||0,breakThreshold:parseFloat(document.getElementById('cBT').value)||6,breakDuration:parseFloat(document.getElementById('cBD').value)||30,overtimeThreshold:parseFloat(document.getElementById('cOT').value)||0,overtimeRate:parseFloat(document.getElementById('cOR').value)||1.25,regime:document.getElementById('cRegime').value||undefined,tauxCotisations:parseFloat(document.getElementById('cCotis').value)||undefined,ifm:document.getElementById('cIFM').checked,id:idx!==null?(S.contracts[idx].id||Date.now()):Date.now()};
   if(idx!==null)S.contracts[idx]=c;else S.contracts.push(c);
   saveState();closeMod();renderContracts();renderActiveContract();
   showToast(`✅ Contrat "${c.name}" sauvegardé`);
@@ -547,9 +623,20 @@ function checkBadges(){
 function getExpData(){const f=document.getElementById('expFrom').value,t=document.getElementById('expTo').value;return Object.entries(S.punches).filter(([k])=>(!f||k>=f)&&(!t||k<=t)).sort(([a],[b])=>a.localeCompare(b));}
 function exportCSV(){
   const data=getExpData();if(!data.length){showToast('⚠️ Aucune donnée');return;}
-  const hdr='Date,Type,Entrée matin,Sortie midi,Entrée après-midi,Sortie soir,Heures brutes,Heures nettes,Pause,Contrat,Type contrat,Taux (€/h),Gains (€)\n';
+  const hdr='Date,Type,Entrée matin,Sortie midi,Entrée après-midi,Sortie soir,Heures brutes,Heures nettes,Pause,Contrat,Type contrat,Taux (€/h),Gains (€),Régime,Net estimé du mois (€)\n';
   const rows=data.map(([k,d])=>{const{gross,net,breakApplied,breakMin}=calcDay(d),{earn,rate}=calcEarn(k,d),c=getContract(k);return`${k},${d.manual?'Manuel':'Auto'},${d.em||''},${d.sm||''},${d.ea||''},${d.es||''},${minToHM(gross)},${minToHM(net)},${breakApplied?breakMin+'min':''},${c?c.name:''},${c?c.type:''},${rate.toFixed(2)},${earn.toFixed(2)}`;}).join('\n');
-  dl('timeflow_export.csv','text/csv','\ufeff'+hdr+rows);showToast('📊 CSV téléchargé');
+  const netMois={};
+  if(typeof netPeriode==='function'){
+    [...new Set(data.map(([k])=>k.slice(0,7)))].forEach(m=>{
+      netMois[m]=netPeriode(data.map(([k])=>k).filter(k=>k.startsWith(m)));
+    });
+  }
+  const rows2=data.map(([k],i)=>{
+    const c=getContract(k)||{},m=k.slice(0,7),n=netMois[m];
+    const reg=(typeof PAIE!=='undefined')?(c.regime||PAIE.regimeParDefaut(c.type)):'';
+    return rows.split('\n')[i]+`,${reg},${n?n.net.toFixed(2):''}`;
+  }).join('\n');
+  dl('timeflow_export.csv','text/csv','\ufeff'+hdr+rows2);showToast('📊 CSV téléchargé');
 }
 function exportTxt(){
   const data=getExpData();if(!data.length){showToast('⚠️ Aucune donnée');return;}
@@ -557,6 +644,20 @@ function exportTxt(){
   let tMin=0,tEarn=0;
   data.forEach(([k,d])=>{const dd=new Date(k+'T00:00:00'),{net}=calcDay(d),{earn}=calcEarn(k,d);tMin+=net;tEarn+=earn;txt+=`${dd.toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}${d.manual?' [Manuel]':''}\n  ☀️ ${d.em||'—'} → ${d.sm||'—'}   🌇 ${d.ea||'—'} → ${d.es||'—'}\n  ⏱ ${minToHM(net)}   💰 ${fmtMoney(earn)}\n\n`;});
   txt+=`${'═'.repeat(37)}\nTOTAL : ${minToHM(tMin)}   GAINS : ${fmtMoney(tEarn)}\n`;
+  const np=(typeof netPeriode==='function')?netPeriode(data.map(([k])=>k)):null;
+  if(np&&np.brut){
+    txt+=`${'─'.repeat(37)}\n`;
+    txt+=`Brut                ${fmtMoney(np.brut)}\n`;
+    if(np.exonere>0)txt+=`  dont exonéré      ${fmtMoney(np.exonere)}\n`;
+    txt+=`Cotisations sal.   -${fmtMoney(np.cotisations)}\n`;
+    txt+=`NET AVANT IMPÔT     ${fmtMoney(np.net)}\n`;
+    if(np.primes>0){
+      txt+=`${'─'.repeat(37)}\nIFM (10%)          +${fmtMoney(np.ifm)}\n`;
+      txt+=`ICCP (10%)         +${fmtMoney(np.iccp)}\n`;
+      txt+=`BRUT TOTAL MISSION  ${fmtMoney(np.brutTotal)}\n`;
+    }
+    txt+=`(estimation avant prélèvement à la source — barème ${PAIE.BAREME})\n`;
+  }
   dl('timeflow_rapport.txt','text/plain',txt);showToast('📄 Rapport téléchargé');
 }
 function exportJSON(){dl('timeflow_backup.json','application/json',JSON.stringify({...S,exportDate:new Date().toISOString(),user:currentUser},null,2));showToast('🗄 Backup JSON téléchargé');}
@@ -652,6 +753,18 @@ async function pushToCloud(manual){
   const cfg=getSyncConfig();if(!cfg||!fbDb)return;
   setSyncStatusUI('syncing');
   try{
+    /* GARDE-FOU : ne jamais écraser un document rempli par un état local vide.
+       C'est le seul scénario qui peut détruire l'historique (app rouverte sur
+       un navigateur vidé, puis premier pointage qui déclenche l'auto-sync). */
+    if(Object.keys(S.punches||{}).length===0){
+      const before=await syncDocRef(cfg.code).get();
+      const remote=before.exists?Object.keys(before.data().punches||{}).length:0;
+      if(remote>0){
+        setSyncStatusUI('error',`envoi bloqué — ${remote} jour(s) dans le cloud, 0 en local`);
+        showToast(`⛔ Envoi bloqué : ${remote} jour(s) dans le cloud et rien en local. Utilisez « ⬇️ Récupérer ».`,5200);
+        return;
+      }
+    }
     const payload=buildSyncPayload();lastSyncPushAt=payload.updatedAt;
     await syncDocRef(cfg.code).set(payload);
     setSyncStatusUI('connected');
@@ -698,7 +811,17 @@ function listenForRemoteChanges(code){
 
 function connectSync(manual){
   try{
-    const cfg=getSyncConfig();
+    let cfg=getSyncConfig();
+    /* La config ET le code vivent aussi dans firebase-config.js, versionné avec
+       l'app : un vidage du navigateur ne fait plus perdre l'accès au cloud. */
+    if((!cfg||!cfg.config||!cfg.code)
+       && typeof FIREBASE_CONFIG!=='undefined'
+       && typeof DEFAULT_SYNC_CODE!=='undefined' && DEFAULT_SYNC_CODE){
+      cfg={config:(cfg&&cfg.config)||FIREBASE_CONFIG,
+           code:(cfg&&cfg.code)||DEFAULT_SYNC_CODE,
+           enabled:cfg?cfg.enabled!==false:true};
+      setSyncConfig(cfg);
+    }
     if(!cfg||!cfg.config||!cfg.code){setSyncStatusUI('off');return;}
     if(typeof firebase==='undefined'){setSyncStatusUI('error','Librairie Firebase non chargée.');return;}
     if(fbDb&&fbUnsub&&connectedSyncCode===cfg.code){setSyncStatusUI('connected');if(manual)showToast('Déjà connecté ☁️',2200);return;}
