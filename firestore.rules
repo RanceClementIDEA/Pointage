@@ -1,43 +1,72 @@
 // ════════════════════════════════════════════════════════════════════
-//  RÈGLES FIRESTORE — TimeFlow (v1 et v2 mobile)
-//  À coller dans : Firebase Console → Firestore Database → Règles
+//  RÈGLES FIRESTORE — TimeFlow
 //
-//  ⚠️ Remplace le firestore.rules actuel du dépôt, qui décrit une
-//  architecture authentifiée (users/{uid}, request.auth != null) que
-//  l'application n'utilise pas : ni le v1 ni le v2 ne chargent
-//  firebase-auth. Le coller couperait toute la synchronisation.
+//  Ce fichier est la COPIE DE RÉFÉRENCE de ce qui est réellement déployé
+//  dans Firebase Console → Firestore Database → Règles. Le dépôt ne fait
+//  foi de rien : seule la console compte. Il sert à relire, à comparer,
+//  et à retrouver le texte exact en cas de fausse manœuvre.
 //
-//  Les deux versions partagent le document `tf_pointage/{code}`.
-//  L'accès est protégé par la confidentialité du code de synchro,
-//  pas par l'authentification — comme en v1.
+//  Modèle d'accès :
+//    1. un jeton Firebase est obligatoire  → plus aucun accès anonyme
+//       depuis un simple curl ou un script de robot ;
+//    2. le code de synchronisation fait au moins 20 caractères → il ne
+//       se devine plus par force brute (un code à 4 chiffres, c'est
+//       10 000 essais, quelques minutes) ;
+//    3. le document doit ressembler à un document TimeFlow → un tiers
+//       ne peut pas remplir la base avec n'importe quoi ;
+//    4. la suppression est interdite depuis l'app.
 // ════════════════════════════════════════════════════════════════════
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Règle en vigueur aujourd'hui, celle sous laquelle l'app tourne déjà.
     match /tf_pointage/{code} {
-      allow read, write: if true;
+
+      // Le code de synchro joue le rôle de secret : il doit être long.
+      function codeValide() {
+        return code.size() >= 20
+            && code.size() <= 64
+            && code.matches('^[A-Za-z0-9_-]+$');
+      }
+
+      // Forme d'un document TimeFlow. Les six clés sont celles que l'app
+      // envoie depuis la v1 : punches, contracts, settings, badges, user,
+      // updatedAt. Aucune autre n'est acceptée.
+      function charge() { return request.resource.data; }
+
+      function chargeValide() {
+        return charge().keys().hasOnly(['punches','contracts','settings','badges','user','updatedAt'])
+            && charge().keys().hasAll(['punches','updatedAt'])
+            && charge().punches is map
+            && charge().punches.size() <= 20000
+            // `is number` existe, mais `int || float` est accepté par toutes
+            // les versions du moteur de règles : aucun risque à la compilation.
+            && (charge().updatedAt is int || charge().updatedAt is float);
+      }
+
+      // `get` = lire UN document dont on connaît déjà l'identifiant.
+      allow get:            if request.auth != null && codeValide();
+
+      // `list` = parcourir la collection. Toujours refusé : sans cela, un
+      // compte anonyme pourrait énumérer tous les espaces et le secret du
+      // code ne protégerait plus rien.
+      allow list:           if false;
+
+      allow create, update: if request.auth != null && codeValide() && chargeValide();
+
+      // L'app ne supprime jamais. Le ménage se fait depuis la console,
+      // où les règles ne s'appliquent pas.
+      allow delete: if false;
     }
 
-    // Tout le reste est fermé.
+    // Tout le reste de la base est fermé.
+    // (Rappel : les règles s'additionnent, ce bloc n'annule pas celui
+    //  du dessus — il ferme seulement ce qui n'est pas explicitement
+    //  autorisé ailleurs.)
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-
-// ────────────────────────────────────────────────────────────────────
-//  DURCISSEMENT OPTIONNEL — à tester avant de le mettre en production
-//  (Firebase Console → Firestore → Règles → onglet « Terrain de jeu »).
-//  Refuse les codes trop courts et les documents qui ne ressemblent pas
-//  à un payload TimeFlow. Le v1 et le v2 envoient tous deux les clés
-//  punches / contracts / settings / badges / user / updatedAt.
-//
-//    match /tf_pointage/{code} {
-//      allow read: if true;
-//      allow write: if code.size() >= 4
-//                   && request.resource.data.keys().hasAll(['punches', 'updatedAt']);
-//    }
-// ────────────────────────────────────────────────────────────────────

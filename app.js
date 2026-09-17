@@ -16,7 +16,6 @@ let _prevDayEarn = 0, _prevMonthEarn = 0;
 const loginScreen    = document.getElementById('loginScreen');
 const appShell       = document.getElementById('appShell');
 const loginBtn       = document.getElementById('loginBtn');
-const usernameInput  = document.getElementById('usernameInput');
 const logoutBtn      = document.getElementById('logoutBtn');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
 const toastEl        = document.getElementById('toast');
@@ -34,11 +33,153 @@ function showToast(msg, duration=2400) {
   _tt = setTimeout(() => toastEl.classList.remove('show'), duration);
 }
 
+/* ════════════════════════════════════════════════════════════════════
+   CODE D'ACCÈS — un seul secret pour tout
+
+   Il ouvre l'application ET désigne le document Firestore. Le code
+   lui-même ne quitte jamais l'appareil : on n'en garde que deux
+   dérivations à sens unique.
+
+     identifiant = SHA-256 itéré 30 000 fois de ('timeflow:doc:v1:'   + code)
+     vérificateur = SHA-256 itéré 30 000 fois de ('timeflow:verif:v1:' + code)
+
+   Pourquoi hacher plutôt que prendre le code tel quel comme identifiant :
+     • le code peut être une phrase qu'on retient, l'identifiant fait
+       toujours 40 caractères — la règle Firestore (20 minimum) tient ;
+     • le code n'apparaît nulle part dans Firebase, ni dans la console ;
+     • le vérificateur détecte une faute de frappe SANS réseau, donc sans
+       risque d'écrire dans un mauvais espace.
+
+   Les 30 000 tours ralentissent une attaque hors ligne sur le vérificateur
+   stocké (≈ 0,2 s ici, ≈ 0,5 s sur téléphone, pour un seul essai).
+   Ce n'est pas PBKDF2, c'est un étirement simple — il vaut ce que vaut
+   le code choisi.
+   ════════════════════════════════════════════════════════════════════ */
+const LS_ACCES  = 'tfAcces';
+const SEL_DOC   = 'timeflow:doc:v1:';
+const SEL_VERIF = 'timeflow:verif:v1:';
+const TOURS     = 30000;
+const CODE_MIN  = 12;
+const NOM_DEFAUT = 'Moi';
+
+/* SHA-256 — implémentation autonome (FIPS 180-4).
+   Pourquoi pas crypto.subtle : il n'existe que dans un contexte sécurisé et
+   son API est asynchrone. Ici la dérivation doit marcher partout et
+   immédiatement, et un échec de dérivation, c'est un verrouillage définitif.
+   Cette implémentation est comparée à celle de Node sur 2000 entrées
+   aléatoires dans tests/acces.test.js. */
+function tfSha256(msg) {
+  const K = [
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+
+  // UTF-8
+  const o = [];
+  for (let i = 0; i < msg.length; i++) {
+    let c = msg.charCodeAt(i);
+    if (c < 0x80) o.push(c);
+    else if (c < 0x800) o.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < msg.length) {
+      const c2 = msg.charCodeAt(i + 1);
+      const cp = 0x10000 + ((c - 0xd800) << 10) + (c2 - 0xdc00); i++;
+      o.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+    } else o.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+  }
+
+  const n = o.length;
+  o.push(0x80);
+  while (o.length % 64 !== 56) o.push(0);
+  const bits = n * 8;
+  o.push(0, 0, 0, 0,
+         (bits / 0x1000000) & 255, (bits >>> 16) & 255, (bits >>> 8) & 255, bits & 255);
+
+  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,
+      h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
+  const w = new Int32Array(64);
+
+  for (let p = 0; p < o.length; p += 64) {
+    for (let i = 0; i < 16; i++)
+      w[i] = (o[p+i*4] << 24) | (o[p+i*4+1] << 16) | (o[p+i*4+2] << 8) | o[p+i*4+3];
+    for (let i = 16; i < 64; i++) {
+      const a = w[i-15], b = w[i-2];
+      const s0 = ((a >>> 7) | (a << 25)) ^ ((a >>> 18) | (a << 14)) ^ (a >>> 3);
+      const s1 = ((b >>> 17) | (b << 15)) ^ ((b >>> 19) | (b << 13)) ^ (b >>> 10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+    }
+    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,hh=h7;
+    for (let i = 0; i < 64; i++) {
+      const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (hh + S1 + ch + K[i] + w[i]) | 0;
+      const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+      const mj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + mj) | 0;
+      hh=g; g=f; f=e; e=(d + t1)|0; d=c; c=b; b=a; a=(t1 + t2)|0;
+    }
+    h0=(h0+a)|0; h1=(h1+b)|0; h2=(h2+c)|0; h3=(h3+d)|0;
+    h4=(h4+e)|0; h5=(h5+f)|0; h6=(h6+g)|0; h7=(h7+hh)|0;
+  }
+
+  const hex = x => ((x >>> 0).toString(16)).padStart(8, '0');
+  return hex(h0)+hex(h1)+hex(h2)+hex(h3)+hex(h4)+hex(h5)+hex(h6)+hex(h7);
+}
+
+function derive(sel, code){
+  let h = tfSha256(sel + code);
+  for(let i=1;i<TOURS;i++) h = tfSha256(h);
+  return h;
+}
+const idEspace  = code => derive(SEL_DOC,   code).slice(0,40);
+const verifCode = code => derive(SEL_VERIF, code).slice(0,32);
+
+/* firebase-config.js peut manquer : oubli au dépôt, ou fichier non copié.
+   L'app doit alors continuer à fonctionner en local, sans synchro et sans
+   la moindre exception — le banc de test le vérifie. */
+const cfgFirebase = () => (typeof FIREBASE_CONFIG!=='undefined' && FIREBASE_CONFIG) || null;
+
+const lireAcces   = () => { try{ return JSON.parse(localStorage.getItem(LS_ACCES))||null; }catch(e){ return null; } };
+const ecrireAcces = a  => a ? localStorage.setItem(LS_ACCES,JSON.stringify(a)) : localStorage.removeItem(LS_ACCES);
+
+/* Générateur : alphabet sans caractères ambigus (ni 0/O, ni 1/I/L/U),
+   20 tirages parmi 30 ≈ 98 bits. Pour qui préfère un gestionnaire de mots
+   de passe à une phrase à retenir. */
+function genererCodeSync(){
+  const alpha='23456789ABCDEFGHJKMNPQRSTVWXYZ';
+  const n=20,out=[];
+  let al=null;
+  try{ if(window.crypto&&window.crypto.getRandomValues){ al=new Uint32Array(n); window.crypto.getRandomValues(al); } }
+  catch(e){ al=null; }
+  for(let i=0;i<n;i++){
+    const r=al?al[i]:Math.floor(Math.random()*4294967296);
+    out.push(alpha[r%alpha.length]);
+    if(i%5===4&&i!==n-1)out.push('-');
+  }
+  return out.join('');
+}
+
+function forceDuCode(c){
+  if(c.length<CODE_MIN) return {ok:false,txt:c.length+'/'+CODE_MIN+' caractères',cls:'faible'};
+  let v=0;
+  if(/[a-z]/.test(c))v++; if(/[A-Z]/.test(c))v++;
+  if(/[0-9]/.test(c))v++; if(/[^A-Za-z0-9]/.test(c))v++;
+  const score=c.length+v*4;
+  if(score>=34) return {ok:true,txt:'Code fort',cls:'fort'};
+  if(score>=24) return {ok:true,txt:'Code correct',cls:'moyen'};
+  return {ok:true,txt:'Code un peu court — rallonge-le',cls:'faible'};
+}
+
 /* ════════════════════════════════════════════
-   LOGIN / LOGOUT
+   OUVERTURE / VERROUILLAGE
 ════════════════════════════════════════════ */
 function login(user) {
-  currentUser = user;
+  currentUser = user || localStorage.getItem('tfUser') || NOM_DEFAUT;
+  user = currentUser;
   localStorage.setItem('tfUser', user);
   loginScreen.style.display = 'none';
   appShell.style.display = 'flex';
@@ -50,20 +191,131 @@ function login(user) {
   try { connectSync(false); } catch(e) { console.error('connectSync:', e); }
 }
 
-loginBtn.addEventListener('click', () => {
-  const u = usernameInput.value.trim();
-  if (!u) { usernameInput.focus(); return; }
-  login(u);
-});
-usernameInput.addEventListener('keydown', e => { if (e.key==='Enter') loginBtn.click(); });
+/* ── Écran de code ─────────────────────────────────────────────────── */
+let memoActive = true;          // « Mémoriser cet appareil »
+let modeChangement = false;     // écran affiché pour CHANGER le code
+let espaceVerifie = false;      // le document cloud a-t-il été confirmé ?
 
-logoutBtn.addEventListener('click', () => {
-  localStorage.removeItem('tfUser');
-  currentUser = null;
-  S = { punches:{}, contracts:[], settings:{ name:'', weekTarget:35, breakThreshold:6, breakDuration:30 }, badges:{} };
+const champCode = () => document.getElementById('accessCodeInput');
+
+function afficherEcranCode(changement){
+  modeChangement = !!changement;
+  const b = document.getElementById('codeBanniere');
+  if (b) b.hidden = !modeChangement;
+  const l = document.getElementById('codeLabel');
+  if (l) l.textContent = modeChangement ? 'Nouveau code d\'accès' : 'Code d\'accès';
+  const t = document.getElementById('loginBtnTxt');
+  if (t) t.textContent = modeChangement ? 'Changer le code' : 'Déverrouiller';
   appShell.style.display = 'none';
   loginScreen.style.display = 'flex';
-  usernameInput.value = '';
+  const c = champCode();
+  if (c) { c.value = ''; c.type = 'password'; majForce(); setTimeout(() => c.focus(), 60); }
+}
+
+function majForce(){
+  const c = champCode(), el = document.getElementById('forceCode');
+  if (!c || !el) return;
+  if (!c.value) { el.textContent = ''; el.className = 'force'; return; }
+  const f = forceDuCode(c.value);
+  el.textContent = f.txt;
+  el.className = 'force ' + f.cls;
+}
+
+function erreurCode(msg){
+  const el = document.getElementById('forceCode');
+  if (el) { el.textContent = msg; el.className = 'force faible'; }
+  const c = champCode();
+  if (c) { c.select(); c.focus(); }
+}
+
+/* La dérivation bloque le fil d'exécution ~0,5 s : on laisse d'abord le
+   navigateur peindre l'état « Déverrouillage… », sinon l'app paraît figée. */
+function lancerDeverrouillage(){
+  const c = champCode();
+  if (!c) return;
+  const code = c.value;
+  if (code.length < CODE_MIN) { erreurCode('Il faut au moins ' + CODE_MIN + ' caractères'); return; }
+  const t = document.getElementById('loginBtnTxt');
+  const libelle = t ? t.textContent : '';
+  loginBtn.disabled = true;
+  if (t) t.textContent = 'Déverrouillage…';
+  setTimeout(() => {
+    try { etapeDeverrouillage(code); }
+    catch (err) { console.error('déverrouillage :', err); erreurCode('Erreur : ' + err.message); }
+    finally { loginBtn.disabled = false; if (t) t.textContent = libelle; }
+  }, 40);
+}
+
+function etapeDeverrouillage(code){
+  const acces = lireAcces();
+  // Appareil déjà connu : une faute de frappe est détectée sans réseau,
+  // donc sans le moindre risque d'écrire dans un mauvais espace.
+  if (!modeChangement && acces && acces.verif && verifCode(code) !== acces.verif) {
+    erreurCode('Code incorrect'); return;
+  }
+  const id = idEspace(code), v = verifCode(code);
+  const memo = document.getElementById('memoDevice');
+  memoActive = memo ? memo.checked : true;
+
+  if (modeChangement) {
+    const ancien = (getSyncConfig() || {}).code || '';
+    if (ancien === id) { erreurCode('C\'est déjà ton code actuel'); return; }
+    ecrireAcces(memoActive ? { v:1, id:id, verif:v } : { v:1, verif:v });
+    if (cfgFirebase()) setSyncConfig({ config:cfgFirebase(), code:id, enabled:true }, memoActive);
+    if (fbUnsub) { fbUnsub(); fbUnsub = null; }
+    connectedSyncCode = null; espaceVerifie = false;
+    modeChangement = false;
+    loginScreen.style.display = 'none';
+    appShell.style.display = 'flex';
+    connectSync(false);
+    pushToCloud(true);
+    showToast('🔑 Nouveau code actif. Ancien espace à supprimer dans Firebase : ' +
+              ancien.slice(0, 12) + '…', 9000);
+    return;
+  }
+
+  ecrireAcces(memoActive ? { v:1, id:id, verif:v } : { v:1, verif:v });
+  if (cfgFirebase()) setSyncConfig({ config:cfgFirebase(), code:id, enabled:true }, memoActive);
+  espaceVerifie = false;
+  login(null);
+  if (!cfgFirebase()) showToast('⚠️ Configuration Firebase absente — app en local uniquement', 4600);
+}
+
+loginBtn.addEventListener('click', lancerDeverrouillage);
+champCode()?.addEventListener('keydown', e => { if (e.key === 'Enter') lancerDeverrouillage(); });
+champCode()?.addEventListener('input', majForce);
+
+document.getElementById('voirCodeBtn')?.addEventListener('click', () => {
+  const c = champCode(); if (!c) return;
+  const montre = c.type === 'password';
+  c.type = montre ? 'text' : 'password';
+  const b = document.getElementById('voirCodeBtn');
+  b.textContent = montre ? '🙈' : '👁';
+  b.setAttribute('aria-label', montre ? 'Masquer le code' : 'Afficher le code');
+  c.focus();
+});
+
+document.getElementById('genCodeBtn')?.addEventListener('click', () => {
+  const c = champCode(); if (!c) return;
+  c.value = genererCodeSync(); c.type = 'text';
+  const b = document.getElementById('voirCodeBtn');
+  if (b) { b.textContent = '🙈'; b.setAttribute('aria-label', 'Masquer le code'); }
+  majForce();
+  showToast('Code généré — note-le avant de continuer', 4600);
+});
+
+/* Verrouiller : l'appareil oublie le code, les données locales restent. */
+function verrouiller(){
+  ecrireAcces(null);
+  setSyncConfig(null);
+  if (fbUnsub) { fbUnsub(); fbUnsub = null; }
+  connectedSyncCode = null; espaceVerifie = false;
+  syncModal?.classList.add('hidden');
+  afficherEcranCode(false);
+}
+logoutBtn.addEventListener('click', () => {
+  if (confirm('Verrouiller cet appareil ?\n\nLe code sera redemandé à la prochaine ouverture. Tes données ne sont pas effacées.'))
+    verrouiller();
 });
 
 /* ════════════════════════════════════════════
@@ -882,8 +1134,20 @@ function sv(name,clickedEl){
    SYNCHRONISATION CLOUD — même système que l'Annuaire KPI
 ════════════════════════════════════════════ */
 const LS_SYNC = 'tfSyncConfig';
-const getSyncConfig = () => { try{ return JSON.parse(localStorage.getItem(LS_SYNC)); }catch{ return null; } };
-const setSyncConfig = cfg => cfg ? localStorage.setItem(LS_SYNC,JSON.stringify(cfg)) : localStorage.removeItem(LS_SYNC);
+/* Si l'appareil n'est pas mémorisé, la configuration ne touche pas le
+   disque : elle ne vit que le temps de la session. Le stockage du
+   navigateur ne contient alors aucun pointeur vers le document cloud. */
+let cfgMemoire = null;
+const getSyncConfig = () => {
+  if(cfgMemoire) return cfgMemoire;
+  try{ return JSON.parse(localStorage.getItem(LS_SYNC)); }catch{ return null; }
+};
+const setSyncConfig = (cfg,persister) => {
+  cfgMemoire = cfg || null;
+  if(!cfg){ localStorage.removeItem(LS_SYNC); return; }
+  if(persister===false) localStorage.removeItem(LS_SYNC);
+  else localStorage.setItem(LS_SYNC,JSON.stringify(cfg));
+};
 
 let fbApp=null,fbDb=null,fbUnsub=null,syncDebounceHandle=null,lastSyncPushAt=0,lastAppliedSyncAt=0,connectedSyncCode=null,applyingRemoteSync=false;
 
@@ -893,6 +1157,40 @@ function setSyncStatusUI(state,detail){
   const s=map[state]||map.off;el.textContent=s.text;el.className='sync-status '+s.cls;
 }
 function syncDocRef(code){return fbDb.collection('tf_pointage').doc(code);}
+
+/* ════════════════════════════════════════════════════════════════════
+   AUTHENTIFICATION — obligatoire avant le moindre accès Firestore.
+
+   Le compte anonyme ne sert qu'à prouver qu'une vraie application parle
+   au projet : il n'identifie PAS les données. Un UID anonyme est propre
+   à un navigateur et disparaît si l'utilisateur vide son stockage —
+   ranger l'historique dessous le rendrait irrécupérable. Le document
+   reste donc indexé par le code de synchronisation.
+
+   La promesse est mémorisée : les appels simultanés (listener, envoi,
+   récupération) partagent une seule connexion.
+   ════════════════════════════════════════════════════════════════════ */
+let fbAuth=null, authPromesse=null;
+
+/* Firestore renvoie `permission-denied` quand la règle refuse. C'est le
+   seul cas qu'il ne faut jamais confondre avec une coupure réseau. */
+function estRefusPermission(err){
+  const c=(err&&(err.code||''))+' '+(err&&err.message||'');
+  return /permission[-_ ]denied|insufficient permissions/i.test(c);
+}
+
+function assurerAuth(){
+  if(typeof firebase==='undefined'||typeof firebase.auth!=='function')
+    return Promise.reject(new Error("module d'authentification non chargé"));
+  if(!fbAuth)fbAuth=firebase.auth();
+  if(fbAuth.currentUser)return Promise.resolve(fbAuth.currentUser);
+  if(!authPromesse){
+    authPromesse=fbAuth.signInAnonymously()
+      .then(res=>res&&res.user?res.user:fbAuth.currentUser)
+      .catch(err=>{authPromesse=null;throw err;});
+  }
+  return authPromesse;
+}
 /* Firestore rejette tout document contenant une valeur `undefined` — et
    l'échec est silencieux pour l'utilisateur. On nettoie systématiquement
    avant l'envoi : un champ absent vaut mieux qu'une synchro cassée. */
@@ -916,10 +1214,37 @@ function scheduleAutoSync(){
   syncDebounceHandle=setTimeout(()=>{syncDebounceHandle=null;pushToCloud(false);},1500);
 }
 
+/* Premier usage d'un code sur cet appareil : si le cloud est vide alors que
+   l'appareil a des journées, c'est soit une faute de frappe dans le code,
+   soit une création d'espace volontaire. On demande AVANT d'écrire — c'est
+   le seul moment où un mauvais code pourrait éparpiller l'historique. */
+async function verifierEspace(){
+  const cfg=getSyncConfig();if(!cfg||!fbDb)return true;
+  try{
+    const snap=await syncDocRef(cfg.code).get();
+    if(snap.exists)return true;
+  }catch(e){return true;}          // incident réseau : on ne bloque pas l'app
+  const n=Object.keys(S.punches||{}).length;
+  if(!n)return true;               // rien à perdre
+  return confirm('Aucune donnée dans le cloud pour ce code.\n\n'
+    +'• Faute de frappe dans le code ? Annule : rien ne sera touché, retape-le.\n\n'
+    +'• Premier code, ou changement de code ? OK : les '+n+' journée(s) de cet '
+    +'appareil vont créer le nouvel espace.');
+}
+
 async function pushToCloud(manual){
   const cfg=getSyncConfig();if(!cfg||!fbDb)return;
   setSyncStatusUI('syncing');
   try{
+    await assurerAuth();
+    if(!espaceVerifie){
+      if(!(await verifierEspace())){
+        setSyncStatusUI('error','espace non confirmé');
+        showToast('Envoi annulé — reverrouille et retape ton code',4200);
+        return;
+      }
+      espaceVerifie=true;
+    }
     /* GARDE-FOU : ne jamais écraser un document rempli par un état local vide.
        C'est le seul scénario qui peut détruire l'historique (app rouverte sur
        un navigateur vidé, puis premier pointage qui déclenche l'auto-sync). */
@@ -957,6 +1282,26 @@ function applyRemoteData(payload,fromSync,force){
     pushToCloud(false);
     return;
   }
+  /* GARDE-FOU SYMÉTRIQUE : un document cloud VIDE ne doit jamais effacer un
+     appareil rempli, même s'il est plus récent. C'est la signature d'un
+     appareil neuf qui a créé l'espace avant d'avoir reçu l'historique —
+     sans ceci, configurer le téléphone avant l'ordinateur viderait l'écran
+     de l'ordinateur. « ⬇️ Récupérer » manuel (force) reste prioritaire. */
+  if(!force && !Object.keys(payload.punches||{}).length && Object.keys(S.punches||{}).length){
+    console.info('sync: document cloud vide ignoré, envoi de l\'historique local');
+    setSyncStatusUI('syncing');
+    pushToCloud(false);
+    return;
+  }
+
+  /* Appareil neuf : le nom affiché vient du cloud plutôt que du placeholder,
+     sinon les exports sortiraient au nom de « Moi ». */
+  if(payload.user && currentUser===NOM_DEFAUT && payload.user!==NOM_DEFAUT){
+    localStorage.removeItem(LS_KEY());
+    currentUser=payload.user; localStorage.setItem('tfUser',currentUser);
+    const ui=document.getElementById('userInfo'); if(ui)ui.textContent=currentUser;
+    const ua=document.getElementById('userAvatar'); if(ua)ua.textContent=currentUser.charAt(0).toUpperCase();
+  }
   applyingRemoteSync=true;
   if(payload.punches)   {S.punches=payload.punches;   localStorage.setItem(LS_KEY(),JSON.stringify(S));}
   if(payload.contracts) S.contracts=payload.contracts;
@@ -976,10 +1321,21 @@ async function pullFromCloud(manual){
   const cfg=getSyncConfig();if(!cfg||!fbDb)return;
   setSyncStatusUI('syncing');
   try{
+    await assurerAuth();
     const snap=await syncDocRef(cfg.code).get();
     if(!snap.exists){setSyncStatusUI('connected');if(manual)showToast('Aucune donnée cloud pour ce code',2800);return;}
     applyRemoteData(snap.data(),false,manual===true);setSyncStatusUI('connected');
-  }catch(err){setSyncStatusUI('error',err.message);if(manual)showToast('❌ Erreur de synchronisation',3000);}
+  }catch(err){
+    setSyncStatusUI('error',err.message);
+    /* Un refus de permission n'est jamais un incident réseau : c'est la
+       règle Firestore ou le code de synchro. Toujours l'afficher, même sur
+       une récupération automatique — sinon l'app semble marcher alors
+       qu'elle ne lit plus rien. */
+    if(manual||estRefusPermission(err))
+      showToast(estRefusPermission(err)
+        ? '⛔ Accès refusé par Firestore — vérifiez le code de synchronisation'
+        : '❌ Erreur de synchronisation',estRefusPermission(err)?5200:3000);
+  }
 }
 
 function listenForRemoteChanges(code){
@@ -992,7 +1348,11 @@ function listenForRemoteChanges(code){
     lastAppliedSyncAt=payload.updatedAt;
     applyRemoteData(payload,true);
     showToast('☁️ Données mises à jour depuis un autre appareil',2800);
-  },err=>setSyncStatusUI('error',err.message));
+  },err=>{
+    setSyncStatusUI('error',err.message);
+    if(estRefusPermission(err))
+      showToast('⛔ Accès refusé par Firestore — vérifiez le code de synchronisation',5200);
+  });
 }
 
 /* L'envoi est différé de 1,5 s. Si l'app est fermée ou mise en arrière-plan
@@ -1009,15 +1369,17 @@ window.addEventListener('pagehide',flushSync);
 function connectSync(manual){
   try{
     let cfg=getSyncConfig();
-    /* La config ET le code vivent aussi dans firebase-config.js, versionné avec
-       l'app : un vidage du navigateur ne fait plus perdre l'accès au cloud. */
+    /* Le code de synchronisation n'est plus saisi ici : il est dérivé du code
+       d'accès au déverrouillage. DEFAULT_SYNC_CODE reste lu pour une
+       installation qui repartirait d'un dépôt personnel, mais il est vide
+       dans celui-ci — un dépôt public ne doit publier aucun code. */
     if((!cfg||!cfg.config||!cfg.code)
        && typeof FIREBASE_CONFIG!=='undefined'
        && typeof DEFAULT_SYNC_CODE!=='undefined' && DEFAULT_SYNC_CODE){
       cfg={config:(cfg&&cfg.config)||FIREBASE_CONFIG,
            code:(cfg&&cfg.code)||DEFAULT_SYNC_CODE,
            enabled:cfg?cfg.enabled!==false:true};
-      setSyncConfig(cfg);
+      setSyncConfig(cfg,memoActive);
     }
     if(!cfg||!cfg.config||!cfg.code){setSyncStatusUI('off');return;}
     if(typeof firebase==='undefined'){setSyncStatusUI('error','Librairie Firebase non chargée.');return;}
@@ -1026,15 +1388,45 @@ function connectSync(manual){
       fbApp=firebase.apps&&firebase.apps.length?firebase.apps[0]:firebase.initializeApp(cfg.config);
       fbDb=firebase.firestore();
     }
-    listenForRemoteChanges(cfg.code);
-    connectedSyncCode=cfg.code;setSyncStatusUI('connected');
+    /* Le listener temps réel ouvre lui aussi une lecture : il ne démarre
+       qu'une fois le jeton obtenu, sinon Firestore le refuse. */
+    setSyncStatusUI('syncing');
+    assurerAuth().then(()=>{
+      listenForRemoteChanges(cfg.code);
+      connectedSyncCode=cfg.code;setSyncStatusUI('connected');
     /* Appareil vide alors qu'un code est connu : on va chercher les données
        tout de suite au lieu d'attendre le listener temps réel. Sur réseau
        lent, l'écran restait sinon à zéro plusieurs secondes — et le premier
        enregistrement partait en écrasement (bloqué par le garde-fou). */
-    if(!Object.keys(S.punches||{}).length)pullFromCloud(false);
-    if(manual)showToast('Connecté ☁️ — code : '+cfg.code,2800);
+      if(!Object.keys(S.punches||{}).length)pullFromCloud(false);
+      if(manual)showToast('Connecté ☁️',2800);
+    }).catch(err=>{
+      console.error('auth:',err);
+      setSyncStatusUI('error','authentification refusée — '+err.message);
+      showToast("❌ Connexion refusée : "+err.message,5200);
+    });
   }catch(err){console.error('connectSync:',err);setSyncStatusUI('error',err.message);if(manual)showToast('❌ Échec de connexion',3000);}
+}
+
+/* Génère un code de synchronisation fort, localement. Alphabet sans
+   caractères ambigus (ni 0/O, ni 1/I/L) : il doit rester recopiable à la
+   main sur un téléphone. 20 tirages parmi 30 ≈ 98 bits — hors de portée
+   d'une attaque par force brute, contrairement aux 4 chiffres précédents. */
+function genererCodeSync(){
+  const alpha='23456789ABCDEFGHJKMNPQRSTVWXYZ';
+  const n=20,out=[];
+  let src=null;
+  try{
+    if(window.crypto&&window.crypto.getRandomValues){
+      src=new Uint32Array(n);window.crypto.getRandomValues(src);
+    }
+  }catch(e){src=null;}
+  for(let i=0;i<n;i++){
+    const r=src?src[i]:Math.floor(Math.random()*4294967296);
+    out.push(alpha[r%alpha.length]);
+    if(i%5===4&&i!==n-1)out.push('-');
+  }
+  return out.join('');            // ex. XXXXX-XXXXX-XXXXX-XXXXX (23 car.)
 }
 
 function disconnectSync(){
@@ -1055,7 +1447,8 @@ function initSyncModal(){
     appId:"1:967658174113:web:defe0e59d70afe6cc562e0"
   };
   document.getElementById('syncConfigInput').value=cfg?.config?JSON.stringify(cfg.config,null,2):JSON.stringify(defaultConfig,null,2);
-  document.getElementById('syncCodeInput').value=cfg?.code||'';
+  const esp=document.getElementById('espaceId');
+  if(esp)esp.textContent=cfg?.code?(cfg.code.slice(0,16)+'…'):'—';
   document.getElementById('syncEnabledToggle').checked=!!cfg?.enabled;
   if(cfg&&cfg.config&&cfg.code)connectSync(false);else setSyncStatusUI('off');
 }
@@ -1068,16 +1461,27 @@ document.getElementById('connectSyncBtn')?.addEventListener('click',()=>{
   let parsedConfig;
   try{parsedConfig=JSON.parse(document.getElementById('syncConfigInput').value.trim());}
   catch{return showToast('❌ Configuration invalide (JSON)',3000);}
-  const code=document.getElementById('syncCodeInput').value.trim();
-  if(!code)return showToast('Choisissez un code de synchronisation',2800);
+  const cfg=getSyncConfig();
+  if(!cfg||!cfg.code)return showToast('Déverrouille d\'abord avec ton code d\'accès',3200);
   fbApp=null;fbDb=null;connectedSyncCode=null;
-  setSyncConfig({config:parsedConfig,code,enabled:true});
+  setSyncConfig({config:parsedConfig,code:cfg.code,enabled:true},memoActive);
   connectSync(true);
+});
+
+document.getElementById('changerCodeBtn')?.addEventListener('click',()=>{
+  if(!confirm('Changer le code d\'accès ?\n\nTes données seront recopiées sous le nouveau code. L\'ancien espace restera dans Firebase : tu pourras le supprimer depuis la console.'))return;
+  syncModal?.classList.add('hidden');
+  afficherEcranCode(true);
+});
+
+document.getElementById('verrouillerBtn')?.addEventListener('click',()=>{
+  if(confirm('Verrouiller cet appareil ?\n\nLe code sera redemandé à la prochaine ouverture. Tes données ne sont pas effacées.'))
+    verrouiller();
 });
 
 document.getElementById('syncEnabledToggle')?.addEventListener('change',function(){
   const c=getSyncConfig();if(!c)return;
-  c.enabled=this.checked;setSyncConfig(c);
+  c.enabled=this.checked;setSyncConfig(c,memoActive);
   showToast(c.enabled?'Synchronisation activée':'Synchronisation en pause',2200);
 });
 
@@ -1119,12 +1523,18 @@ if('serviceWorker' in navigator){
    AUTO-LOGIN (session mémorisée)
    Placé en tout dernier — même pattern que l'Annuaire KPI
 ════════════════════════════════════════════ */
-if(currentUser){
-  try{login(currentUser);}
+const _acces = lireAcces();
+if(_acces && _acces.id){
+  // Appareil mémorisé : l'espace a déjà servi, pas de confirmation à demander.
+  espaceVerifie = true;
+  memoActive = true;
+  if(cfgFirebase()) setSyncConfig({config:cfgFirebase(), code:_acces.id, enabled:true}, true);
+  try{ login(null); }
   catch(err){
     console.error('Erreur reconnexion auto :',err);
-    showToast('⚠️ Erreur au chargement — reconnectez-vous');
-    loginScreen.style.display='flex';
-    appShell.style.display='none';
+    showToast('⚠️ Erreur au chargement — retape ton code');
+    afficherEcranCode(false);
   }
+}else{
+  afficherEcranCode(false);
 }

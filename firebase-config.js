@@ -1,12 +1,16 @@
-/* ════════════════════════════════════════════════════════════════════
+/* ═════════════════════════════════════════════════════════════════════
    TimeFlow — configuration Firebase
    Chargé AVANT app.js par index.html.
 
-   Pourquoi ce fichier : en v1, la config et le code de synchronisation
-   n'existaient que dans le localStorage du navigateur. Un vidage du
-   navigateur effaçait les données ET le code permettant de les
-   retrouver. Ici les deux sont versionnés avec l'app : même après un
-   nettoyage complet, l'app se reconnecte seule et récupère l'historique.
+   Ces six valeurs ne sont PAS un secret : Firebase les publie de toute
+   façon dans toute application web, elles identifient le projet, elles ne
+   donnent aucun droit. Ce qui donne les droits, ce sont les règles
+   Firestore et l'authentification — voir firestore.rules.
+
+   Ce fichier ne contient délibérément AUCUN code de synchronisation :
+   ce dépôt est public, et un code publié est un code compromis.
+   Le code se saisit une fois par appareil (☰ → Synchronisation), le
+   navigateur le retient ensuite. Bouton 🎲 pour en générer un fort.
    ════════════════════════════════════════════════════════════════════ */
 
 const FIREBASE_CONFIG = {
@@ -18,7 +22,6 @@ const FIREBASE_CONFIG = {
   appId: "1:967658174113:web:defe0e59d70afe6cc562e0"
 };
 
-/* Code de synchronisation par défaut — celui du document déjà existant
-   dans Firestore (`tf_pointage/4455`). Mettre '' pour désactiver la
-   reprise automatique et exiger une saisie manuelle. */
-const DEFAULT_SYNC_CODE = "4455";
+/* Volontairement vide. Ne jamais y remettre de code : ce fichier part sur
+   GitHub à chaque déploiement. */
+const DEFAULT_SYNC_CODE = "";

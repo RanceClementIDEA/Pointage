@@ -35,13 +35,30 @@
       <p class="login-app-name">TimeFlow</p>
       <p class="login-tagline">Pointage & suivi des heures</p>
     </div>
+    <p id="codeBanniere" class="code-banniere" hidden>
+      Nouveau code d'accès — tes données seront recopiées sous ce code.
+    </p>
     <div class="login-form">
-      <label for="usernameInput">Identifiant</label>
-      <input type="text" id="usernameInput" placeholder="Votre nom ou email" autocomplete="username">
+      <label for="accessCodeInput" id="codeLabel">Code d'accès</label>
+      <div class="code-row">
+        <input type="password" id="accessCodeInput" placeholder="12 caractères minimum"
+               autocomplete="current-password" spellcheck="false" enterkeyhint="go">
+        <button type="button" id="voirCodeBtn" class="btn-oeil" title="Afficher le code" aria-label="Afficher le code">👁</button>
+        <button type="button" id="genCodeBtn" class="btn-oeil" title="Générer un code fort" aria-label="Générer un code fort">🎲</button>
+      </div>
+      <p id="forceCode" class="force" role="status"></p>
+      <label class="login-memo">
+        <input type="checkbox" id="memoDevice" checked>
+        <span>Mémoriser cet appareil</span>
+      </label>
       <button id="loginBtn">
-        <span>Se connecter</span>
+        <span id="loginBtnTxt">Déverrouiller</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </button>
+      <p class="login-aide">
+        Le même code sur tous tes appareils donne les mêmes données. Il n'est
+        écrit nulle part : note-le dans ton gestionnaire de mots de passe.
+      </p>
     </div>
   </div>
   <div class="login-bg-shapes">
@@ -71,7 +88,7 @@
         <span class="user-name" id="userInfo">—</span>
         <span class="user-role">Utilisateur</span>
       </div>
-      <button id="logoutBtn" title="Déconnexion" aria-label="Déconnexion" class="btn-logout">
+      <button id="logoutBtn" title="Verrouiller" aria-label="Verrouiller" class="btn-logout">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
           <polyline points="16 17 21 12 16 7"/>
@@ -384,8 +401,13 @@
   "appId": "..."
 }'></textarea>
 
-    <label class="modal-label">Code de synchronisation</label>
-    <input type="text" id="syncCodeInput" placeholder="Identique sur tous vos appareils, ex : timeflow-2026">
+    <label class="modal-label">Espace de synchronisation</label>
+    <p id="espaceId" class="espace-id">—</p>
+    <p class="modal-sub sync-hint">
+      Cet identifiant est calculé à partir de ton <b>code d'accès</b> : le code
+      lui-même n'est stocké ni ici, ni dans Firebase, ni dans le dépôt GitHub.
+      Le même code sur un autre appareil retombe sur le même espace.
+    </p>
 
     <label class="modal-checkbox">
       <input type="checkbox" id="syncEnabledToggle">
@@ -397,6 +419,8 @@
       <button id="pushSyncBtn"       class="btn-secondary">⬆️ Envoyer</button>
       <button id="pullSyncBtn"       class="btn-secondary">⬇️ Récupérer</button>
       <button id="disconnectSyncBtn" class="btn-secondary">🔌 Désactiver</button>
+      <button id="changerCodeBtn"    class="btn-secondary">🔑 Changer le code</button>
+      <button id="verrouillerBtn"    class="btn-secondary">🔒 Verrouiller</button>
     </div>
     <p class="modal-sub sync-hint">
       <b>⬇️ Récupérer</b> remplace les données de cet appareil par celles du cloud.
@@ -413,6 +437,7 @@
 
 <!-- Firebase (compat — même version que l'annuaire KPI) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="paie.js"></script>

@@ -688,6 +688,39 @@ button{cursor:pointer;border:none;background:none}
 #pullSyncBtn{background:rgba(47,230,176,.14)!important;border-color:rgba(47,230,176,.32)!important;color:var(--neon)!important}
 #pushSyncBtn{background:rgba(247,197,90,.12)!important;border-color:rgba(247,197,90,.28)!important;color:var(--gold)!important}
 #disconnectSyncBtn{color:var(--text3)!important}
+/* ── Écran de code d'accès ─────────────────────────────────────────── */
+.code-row{display:flex;gap:7px}
+.code-row input[type=password],.code-row input[type=text]{flex:1;min-width:0}
+/* Spécificité volontaire : `.login-form button` peint tous les boutons du
+   formulaire en vert. Les deux boutons utilitaires doivent rester neutres,
+   sinon trois verts se disputent l'attention avec « Déverrouiller ». */
+.login-form .btn-oeil{
+  flex:0 0 auto;width:46px;min-height:44px;padding:0;border-radius:var(--r);
+  background:var(--surface2);border:1px solid var(--border2);color:var(--text1);
+  font-size:17px;line-height:1;transition:var(--t);
+}
+.login-form .btn-oeil:hover{border-color:var(--neon)}
+.force{
+  margin:0;min-height:15px;font:600 11px/1.3 'JetBrains Mono',monospace;
+  letter-spacing:.04em;color:var(--text3);
+}
+.force.faible{color:var(--red)}
+.force.moyen{color:var(--gold)}
+.force.fort{color:var(--neon)}
+.login-memo{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text2)}
+.login-memo input{width:18px;height:18px;accent-color:var(--neon)}
+.login-aide{margin:2px 0 0;font-size:11.5px;line-height:1.55;color:var(--text3)}
+.code-banniere{
+  margin:0 0 12px;padding:10px 12px;border-radius:var(--r);
+  background:rgba(247,197,90,.12);border:1px solid rgba(247,197,90,.3);
+  font-size:12.5px;line-height:1.5;color:var(--text1);
+}
+.espace-id{
+  margin:0;padding:11px 13px;border-radius:var(--r);
+  background:var(--surface2);border:1px solid var(--border2);
+  font:600 13px/1.4 'JetBrains Mono',monospace;color:var(--text2);
+  overflow-wrap:anywhere;
+}
 .sync-hint{
   margin-top:4px;padding:11px 13px;border-radius:var(--r);
   background:var(--surface);border:1px solid var(--border3);
