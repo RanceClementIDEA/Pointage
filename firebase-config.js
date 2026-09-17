@@ -41,4 +41,4 @@ const SYNC_EMAIL = "timeflow@pointage-e9591.firebaseapp.com";
    Clé de site reCAPTCHA Enterprise (console Google Cloud → Fraud Defense).
    Publique par nature, comme les valeurs ci-dessus.
      ""  → App Check inactif                                         */
-const APP_CHECK_SITE_KEY = "";
+const APP_CHECK_SITE_KEY = "6Lf0ccAtAAAAAMnTytmhbtQZV2B-O8SjuM77_iFy";
