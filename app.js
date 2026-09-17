@@ -58,9 +58,18 @@ function showToast(msg, duration=2400) {
 const LS_ACCES  = 'tfAcces';
 const SEL_DOC   = 'timeflow:doc:v1:';
 const SEL_VERIF = 'timeflow:verif:v1:';
+const SEL_AUTH  = 'timeflow:auth:v1:';   // mot de passe du compte de synchronisation
 const TOURS     = 30000;
 const CODE_MIN  = 12;
 const NOM_DEFAUT = 'Moi';
+
+/* Compte de synchronisation — état de session, jamais écrit sur le disque.
+   mdpSession : mot de passe dérivé du code tapé, gardé en mémoire le seul
+   temps d'ouvrir le compte. mdpAncien : celui du code actuel pendant un
+   changement de code (étape 1 → étape 2). */
+let mdpSession = null;
+let mdpAncien = null;
+let etapeChangement = null;     // null | 'ancien' | 'nouveau'
 
 /* SHA-256 — implémentation autonome (FIPS 180-4).
    Pourquoi pas crypto.subtle : il n'existe que dans un contexte sécurisé et
@@ -138,6 +147,18 @@ function derive(sel, code){
 const idEspace  = code => derive(SEL_DOC,   code).slice(0,40);
 const verifCode = code => derive(SEL_VERIF, code).slice(0,32);
 
+/* Mot de passe du compte : troisième dérivation, indépendante des deux
+   autres. Connaître l'identifiant d'espace (stocké sur un appareil
+   mémorisé) ne permet donc PAS d'en déduire le mot de passe, et le code
+   lui-même ne quitte toujours pas l'appareil. Le préfixe fixe satisfait
+   n'importe quelle politique de mot de passe Firebase (majuscule,
+   minuscule, chiffre, caractère spécial) sans rien retirer à l'entropie. */
+const motDePasseCompte = code => 'Tf!9' + derive(SEL_AUTH, code).slice(0,40);
+
+/* Le compte de synchronisation s'active en renseignant SYNC_EMAIL dans
+   firebase-config.js. Vide ou absent : connexion anonyme, comme avant. */
+const compteDedie = () => typeof SYNC_EMAIL !== 'undefined' && !!SYNC_EMAIL;
+
 /* firebase-config.js peut manquer : oubli au dépôt, ou fichier non copié.
    L'app doit alors continuer à fonctionner en local, sans synchro et sans
    la moindre exception — le banc de test le vérifie. */
@@ -200,16 +221,42 @@ const champCode = () => document.getElementById('accessCodeInput');
 
 function afficherEcranCode(changement){
   modeChangement = !!changement;
-  const b = document.getElementById('codeBanniere');
-  if (b) b.hidden = !modeChangement;
-  const l = document.getElementById('codeLabel');
-  if (l) l.textContent = modeChangement ? 'Nouveau code d\'accès' : 'Code d\'accès';
-  const t = document.getElementById('loginBtnTxt');
-  if (t) t.textContent = modeChangement ? 'Changer le code' : 'Déverrouiller';
+  /* Avec le compte de synchronisation, changer de code change aussi le mot
+     de passe du compte — Firebase exige alors le code ACTUEL : étape 1. */
+  etapeChangement = (modeChangement && compteDedie()) ? 'ancien' : null;
+  mdpAncien = null;
+  majEcranCode();
   appShell.style.display = 'none';
   loginScreen.style.display = 'flex';
+  viderChampCode();
+}
+
+function viderChampCode(){
   const c = champCode();
   if (c) { c.value = ''; c.type = 'password'; majForce(); setTimeout(() => c.focus(), 60); }
+}
+
+function libelleBouton(){
+  if (!modeChangement) return 'Déverrouiller';
+  return etapeChangement === 'ancien' ? 'Continuer' : 'Changer le code';
+}
+
+function majEcranCode(){
+  const etape1 = modeChangement && etapeChangement === 'ancien';
+  const b = document.getElementById('codeBanniere');
+  if (b) {
+    b.hidden = !modeChangement;
+    if (modeChangement) b.textContent =
+        etape1                        ? 'Étape 1 sur 2 — confirme ton code d\'accès actuel.'
+      : etapeChangement === 'nouveau' ? 'Étape 2 sur 2 — nouveau code d\'accès : tes données seront recopiées sous ce code.'
+      :                                 'Nouveau code d\'accès — tes données seront recopiées sous ce code.';
+  }
+  const l = document.getElementById('codeLabel');
+  if (l) l.textContent = !modeChangement ? 'Code d\'accès' : (etape1 ? 'Code d\'accès actuel' : 'Nouveau code d\'accès');
+  const t = document.getElementById('loginBtnTxt');
+  if (t) t.textContent = libelleBouton();
+  const g = document.getElementById('genCodeBtn');
+  if (g) g.hidden = etape1;      // générer un code n'a pas de sens pour confirmer l'actuel
 }
 
 function majForce(){
@@ -236,44 +283,101 @@ function lancerDeverrouillage(){
   const code = c.value;
   if (code.length < CODE_MIN) { erreurCode('Il faut au moins ' + CODE_MIN + ' caractères'); return; }
   const t = document.getElementById('loginBtnTxt');
-  const libelle = t ? t.textContent : '';
   loginBtn.disabled = true;
-  if (t) t.textContent = 'Déverrouillage…';
+  if (t) t.textContent = modeChangement ? 'Vérification…' : 'Déverrouillage…';
+  /* etapeDeverrouillage peut attendre le compte de synchronisation : le
+     bouton ne se réactive qu'une fois la réponse arrivée. */
   setTimeout(() => {
-    try { etapeDeverrouillage(code); }
-    catch (err) { console.error('déverrouillage :', err); erreurCode('Erreur : ' + err.message); }
-    finally { loginBtn.disabled = false; if (t) t.textContent = libelle; }
+    Promise.resolve()
+      .then(() => etapeDeverrouillage(code))
+      .catch(err => { console.error('déverrouillage :', err); erreurCode('Erreur : ' + messageAuth(err)); })
+      .then(() => {
+        loginBtn.disabled = false;
+        const t2 = document.getElementById('loginBtnTxt');
+        if (t2) t2.textContent = libelleBouton();
+      });
   }, 40);
 }
 
 function etapeDeverrouillage(code){
   const acces = lireAcces();
-  // Appareil déjà connu : une faute de frappe est détectée sans réseau,
-  // donc sans le moindre risque d'écrire dans un mauvais espace.
-  if (!modeChangement && acces && acces.verif && verifCode(code) !== acces.verif) {
-    erreurCode('Code incorrect'); return;
-  }
-  const id = idEspace(code), v = verifCode(code);
+  const v = verifCode(code);
   const memo = document.getElementById('memoDevice');
   memoActive = memo ? memo.checked : true;
 
-  if (modeChangement) {
-    const ancien = (getSyncConfig() || {}).code || '';
-    if (ancien === id) { erreurCode('C\'est déjà ton code actuel'); return; }
-    ecrireAcces(memoActive ? { v:1, id:id, verif:v } : { v:1, verif:v });
-    if (cfgFirebase()) setSyncConfig({ config:cfgFirebase(), code:id, enabled:true }, memoActive);
-    if (fbUnsub) { fbUnsub(); fbUnsub = null; }
-    connectedSyncCode = null; espaceVerifie = false;
-    modeChangement = false;
-    loginScreen.style.display = 'none';
-    appShell.style.display = 'flex';
-    connectSync(false);
-    pushToCloud(true);
-    showToast('🔑 Nouveau code actif. Ancien espace à supprimer dans Firebase : ' +
-              ancien.slice(0, 12) + '…', 9000);
-    return;
+  /* Changement de code, étape 1 : confirmer le code actuel. Hors ligne si
+     l'appareil le connaît, sinon c'est le compte qui tranche. */
+  if (modeChangement && etapeChangement === 'ancien') {
+    const verdict = (acces && acces.verif && v === acces.verif)
+      ? Promise.resolve(true)
+      : codeAccepteParLeCompte(code);
+    return verdict.then(accepte => {
+      if (!accepte) { erreurCode('Code actuel incorrect'); return; }
+      mdpAncien = motDePasseCompte(code);
+      etapeChangement = 'nouveau';
+      majEcranCode();
+      viderChampCode();
+    });
   }
 
+  // Appareil déjà connu : une faute de frappe est détectée sans réseau,
+  // donc sans le moindre risque d'écrire dans un mauvais espace.
+  if (!modeChangement && acces && acces.verif && v !== acces.verif) {
+    /* Avec le compte de synchronisation, le code a pu être changé depuis un
+       autre appareil : l'empreinte locale est alors périmée et c'est le
+       compte qui tranche — sans jamais rien créer. */
+    if (!compteDedie() || !cfgFirebase() || navigator.onLine === false) {
+      erreurCode('Code incorrect'); return;
+    }
+    return codeAccepteParLeCompte(code).then(accepte => {
+      if (!accepte) { erreurCode('Code incorrect'); return; }
+      showToast('🔑 Code changé depuis un autre appareil — cet appareil suit', 4200);
+      terminerDeverrouillage(code, v, true);
+    });
+  }
+
+  if (modeChangement) {
+    const id = idEspace(code);
+    const ancien = (getSyncConfig() || {}).code || '';
+    if (ancien === id) { erreurCode('C\'est déjà ton code actuel'); return; }
+    if (etapeChangement !== 'nouveau') { appliquerNouveauCode(id, v, ancien); return; }
+    // Le mot de passe du compte change AVANT le code local : si Firebase
+    // refuse, rien n'a bougé sur l'appareil et l'ancien code reste valable.
+    return changerMotDePasseCompte(mdpAncien, motDePasseCompte(code))
+      .then(() => { mdpAncien = null; appliquerNouveauCode(id, v, ancien); })
+      .catch(err => {
+        if (err && err.code === 'timeflow/ancien-refuse') {
+          etapeChangement = 'ancien'; mdpAncien = null;
+          majEcranCode(); viderChampCode();
+        }
+        throw err;
+      });
+  }
+
+  terminerDeverrouillage(code, v, false);
+}
+
+function appliquerNouveauCode(id, v, ancien){
+  ecrireAcces(memoActive ? { v:1, id:id, verif:v } : { v:1, verif:v });
+  if (cfgFirebase()) setSyncConfig({ config:cfgFirebase(), code:id, enabled:true }, memoActive);
+  if (fbUnsub) { fbUnsub(); fbUnsub = null; }
+  connectedSyncCode = null; espaceVerifie = false;
+  modeChangement = false; etapeChangement = null;
+  loginScreen.style.display = 'none';
+  appShell.style.display = 'flex';
+  connectSync(false);
+  pushToCloud(true);
+  showToast('🔑 Nouveau code actif. Ancien espace à supprimer dans Firebase : ' +
+            ancien.slice(0, 12) + '…', 9000);
+}
+
+/* dejaConnecte : le compte vient d'accepter ce code, inutile de garder
+   son mot de passe en mémoire. */
+function terminerDeverrouillage(code, v, dejaConnecte){
+  const id = idEspace(code);
+  mdpSession = null;
+  if (compteDedie() && !dejaConnecte && !(fbAuth && estCompteAttendu(fbAuth.currentUser)))
+    mdpSession = motDePasseCompte(code);
   ecrireAcces(memoActive ? { v:1, id:id, verif:v } : { v:1, verif:v });
   if (cfgFirebase()) setSyncConfig({ config:cfgFirebase(), code:id, enabled:true }, memoActive);
   espaceVerifie = false;
@@ -304,12 +408,21 @@ document.getElementById('genCodeBtn')?.addEventListener('click', () => {
   showToast('Code généré — note-le avant de continuer', 4600);
 });
 
-/* Verrouiller : l'appareil oublie le code, les données locales restent. */
+/* Verrouiller : l'appareil oublie le code, les données locales restent.
+   Avec le compte de synchronisation, la session Firebase est fermée aussi :
+   un appareil verrouillé n'a plus aucun accès au cloud. */
 function verrouiller(){
   ecrireAcces(null);
   setSyncConfig(null);
   if (fbUnsub) { fbUnsub(); fbUnsub = null; }
   connectedSyncCode = null; espaceVerifie = false;
+  mdpSession = null;
+  if (compteDedie() && fbAuth) {
+    verrouillageVolontaire = true;
+    Promise.resolve().then(() => fbAuth.signOut())
+      .catch(e => console.warn('déconnexion du compte :', e))
+      .then(() => { verrouillageVolontaire = false; });
+  }
   syncModal?.classList.add('hidden');
   afficherEcranCode(false);
 }
@@ -1179,15 +1292,224 @@ function estRefusPermission(err){
   return /permission[-_ ]denied|insufficient permissions/i.test(c);
 }
 
+/* ════════════════════════════════════════════════════════════════════
+   INITIALISATION FIREBASE + APP CHECK
+
+   App Check doit être activé juste après initializeApp, avant tout appel
+   à Firestore ou à l'authentification. Clé vide (firebase-config.js) :
+   rien n'est activé, l'app se comporte exactement comme avant.
+   ════════════════════════════════════════════════════════════════════ */
+let appCheckActif=false;
+function activerAppCheck(){
+  if(appCheckActif)return;
+  if(typeof APP_CHECK_SITE_KEY==='undefined'||!APP_CHECK_SITE_KEY)return;
+  if(typeof firebase.appCheck!=='function'){console.warn('App Check : module non chargé — protection inactive');return;}
+  try{
+    // En local, reCAPTCHA refuse localhost : jeton de débogage à enregistrer
+    // dans la console (App Check → menu de l'app → Gérer les jetons de débogage).
+    if(['localhost','127.0.0.1'].indexOf(location.hostname)>=0)self.FIREBASE_APPCHECK_DEBUG_TOKEN=true;
+    firebase.appCheck().activate(new firebase.appCheck.ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY),true);
+    appCheckActif=true;
+  }catch(e){console.error('App Check :',e);}
+}
+function initFirebase(config){
+  if(!fbApp){
+    fbApp=firebase.apps&&firebase.apps.length?firebase.apps[0]:firebase.initializeApp(config);
+    activerAppCheck();
+    fbDb=firebase.firestore();
+  }
+  if(!fbAuth&&typeof firebase.auth==='function'){fbAuth=firebase.auth();surveillerSession();}
+  return fbApp;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   COMPTE DE SYNCHRONISATION (activé par SYNC_EMAIL)
+
+   Un seul compte Firebase e-mail/mot de passe, dont le mot de passe est
+   dérivé du code d'accès sur l'appareil. Les règles Firestore n'acceptent
+   que l'UID de ce compte : connaître l'identifiant d'un espace ne suffit
+   plus, et Firebase freine lui-même les essais répétés.
+
+   • Premier appareil : le compte n'existe pas encore, l'app le crée.
+   • Appareil mémorisé : la session du compte est conservée par Firebase,
+     le code n'est redemandé que si elle a disparu.
+   • Méthode e-mail désactivée dans la console : repli anonyme, rien ne
+     casse.
+   ════════════════════════════════════════════════════════════════════ */
+const CODES_IDENTIFIANTS_REFUSES=['auth/invalid-credential','auth/invalid-login-credentials','auth/user-not-found','auth/wrong-password'];
+let repliAnonyme=false;            // méthode e-mail désactivée : anonyme pour cette session
+let verrouillageVolontaire=false;  // déconnexion demandée par « Verrouiller »
+let surveillanceSession=false;
+
+const compteActif=()=>compteDedie()&&!repliAnonyme;
+const estCompteAttendu=u=>!!(u&&!u.isAnonymous&&u.email&&
+  u.email.toLowerCase()===String(typeof SYNC_EMAIL!=='undefined'?SYNC_EMAIL:'').toLowerCase());
+function erreurTimeflow(code,message){const e=new Error(message);e.code=code;return e;}
+
+function messageAuth(err){
+  const c=(err&&err.code)||'';
+  const m={
+    'timeflow/code-requis':"retape ton code d'accès pour ouvrir le compte de synchronisation",
+    'timeflow/code-refuse':'code refusé par le compte de synchronisation',
+    'timeflow/ancien-refuse':'le compte refuse ce code actuel — retape-le',
+    'timeflow/firebase-absent':'Firebase indisponible — réessaie avec du réseau',
+    'auth/too-many-requests':'trop de tentatives — réessaie dans quelques minutes',
+    'auth/network-request-failed':'pas de connexion réseau',
+    'auth/user-disabled':'compte de synchronisation désactivé dans la console',
+    'auth/requires-recent-login':'reconnexion nécessaire — verrouille, déverrouille, puis recommence',
+    'auth/weak-password':'mot de passe refusé par la politique de mots de passe Firebase',
+    'auth/operation-not-allowed':'méthode de connexion désactivée dans la console Firebase'
+  };
+  return m[c]||(err&&err.message)||'erreur inconnue';
+}
+
+/* Attend que Firebase ait relu la session conservée par le navigateur. */
+function sessionRestauree(){
+  return new Promise(resolve=>{
+    let fini=false,stop=null;
+    stop=fbAuth.onAuthStateChanged(u=>{
+      if(fini)return;fini=true;
+      if(stop)stop();else setTimeout(()=>{if(stop)stop();},0);
+      resolve(u);
+    });
+  });
+}
+
+/* Session perdue alors que l'app est ouverte (code changé sur un autre
+   appareil, compte désactivé) : on redemande le code au lieu d'afficher
+   des refus Firestore à répétition. */
+function surveillerSession(){
+  if(surveillanceSession||!fbAuth||!compteDedie())return;
+  surveillanceSession=true;
+  let etaitConnecte=estCompteAttendu(fbAuth.currentUser);
+  fbAuth.onAuthStateChanged(u=>{
+    const ok=estCompteAttendu(u);
+    if(etaitConnecte&&!ok&&!verrouillageVolontaire&&compteActif()&&appShell.style.display!=='none'){
+      if(fbUnsub){fbUnsub();fbUnsub=null;}
+      connectedSyncCode=null;
+      setSyncStatusUI('error','session du compte terminée');
+      showToast('🔐 Session du compte terminée (code changé sur un autre appareil ?) — retape ton code',6500);
+      afficherEcranCode(false);
+    }
+    etaitConnecte=ok;
+  });
+}
+
+function connexionAnonyme(){
+  return fbAuth.signInAnonymously().then(res=>res&&res.user?res.user:fbAuth.currentUser);
+}
+
+function connexionCompte(){
+  if(!mdpSession)
+    return Promise.reject(erreurTimeflow('timeflow/code-requis',messageAuth({code:'timeflow/code-requis'})));
+  const mdp=mdpSession,email=SYNC_EMAIL;
+  const P=(firebase.auth.Auth&&firebase.auth.Auth.Persistence)||{LOCAL:'local',SESSION:'session'};
+  // Appareil non mémorisé : la session du compte meurt avec l'onglet.
+  return fbAuth.setPersistence(memoActive?P.LOCAL:P.SESSION).catch(()=>{})
+    .then(()=>fbAuth.signInWithEmailAndPassword(email,mdp))
+    .then(res=>{mdpSession=null;return res.user;})
+    .catch(err=>{
+      const c=(err&&err.code)||'';
+      if(c==='auth/operation-not-allowed'){
+        repliAnonyme=true;
+        console.warn('Compte de synchro : méthode « Adresse e-mail/Mot de passe » désactivée dans la console — connexion anonyme provisoire.');
+        return connexionAnonyme();
+      }
+      if(CODES_IDENTIFIANTS_REFUSES.indexOf(c)<0)throw err;
+      if(c==='auth/wrong-password')throw erreurTimeflow('timeflow/code-refuse',messageAuth({code:'timeflow/code-refuse'}));
+      // Compte inexistant (premier appareil) ou mauvais code : seule la
+      // création permet de trancher — elle échoue si le compte existe déjà.
+      return fbAuth.createUserWithEmailAndPassword(email,mdp)
+        .then(res=>{mdpSession=null;compteVientDEtreCree(res.user);return res.user;})
+        .catch(e2=>{
+          const c2=(e2&&e2.code)||'';
+          if(c2==='auth/email-already-in-use'||c2==='auth/admin-restricted-operation')
+            throw erreurTimeflow('timeflow/code-refuse',messageAuth({code:'timeflow/code-refuse'}));
+          throw e2;
+        });
+    });
+}
+
+function compteVientDEtreCree(user){
+  console.info('TimeFlow — compte de synchronisation créé. UID à copier dans les règles Firestore :',user.uid);
+  showToast('✅ Compte de synchronisation créé — son UID est affiché dans ☰ → Synchronisation',9000);
+  majInfoCompte();
+}
+
+function majInfoCompte(){
+  const el=document.getElementById('compteSync');if(!el)return;
+  const u=fbAuth&&fbAuth.currentUser;
+  if(!compteDedie())el.textContent='Connexion anonyme (compte non configuré)';
+  else if(estCompteAttendu(u))el.textContent='UID : '+u.uid;
+  else if(repliAnonyme)el.textContent='Anonyme — méthode e-mail désactivée dans la console';
+  else if(u&&u.isAnonymous)el.textContent='Anonyme — retape ton code pour ouvrir le compte';
+  else el.textContent='Non connecté';
+}
+
+/* Le compte accepte-t-il ce code ? Connexion seule, jamais de création. */
+function codeAccepteParLeCompte(code){
+  const cfgF=cfgFirebase();
+  if(!compteDedie()||!cfgF||typeof firebase==='undefined'||typeof firebase.auth!=='function')
+    return Promise.resolve(false);
+  initFirebase(((getSyncConfig()||{}).config)||cfgF);
+  return fbAuth.signInWithEmailAndPassword(SYNC_EMAIL,motDePasseCompte(code))
+    .then(()=>true)
+    .catch(err=>{
+      if(CODES_IDENTIFIANTS_REFUSES.indexOf((err&&err.code)||'')>=0)return false;
+      if(err&&err.code==='auth/operation-not-allowed'){repliAnonyme=true;return false;}
+      throw err;
+    });
+}
+
+/* Changement de code : le mot de passe du compte suit. Connexion fraîche
+   avec l'ancien (Firebase exige une connexion récente), puis mise à jour.
+   Les autres appareils perdent leur session et redemanderont le code. */
+async function changerMotDePasseCompte(ancien,nouveau){
+  const cfgF=cfgFirebase();
+  if(!cfgF||typeof firebase==='undefined'||typeof firebase.auth!=='function')
+    throw erreurTimeflow('timeflow/firebase-absent',messageAuth({code:'timeflow/firebase-absent'}));
+  initFirebase(((getSyncConfig()||{}).config)||cfgF);
+  try{
+    await fbAuth.signInWithEmailAndPassword(SYNC_EMAIL,ancien);
+  }catch(err){
+    const c=(err&&err.code)||'';
+    if(c==='auth/operation-not-allowed'){repliAnonyme=true;return;}   // pas de compte : rien à changer
+    if(CODES_IDENTIFIANTS_REFUSES.indexOf(c)<0)throw err;
+    // Pas encore de compte ? On le crée directement avec le nouveau mot de passe.
+    try{
+      const res=await fbAuth.createUserWithEmailAndPassword(SYNC_EMAIL,nouveau);
+      compteVientDEtreCree(res.user);
+      return;
+    }catch(e2){
+      if(e2&&(e2.code==='auth/email-already-in-use'||e2.code==='auth/admin-restricted-operation'))
+        throw erreurTimeflow('timeflow/ancien-refuse',messageAuth({code:'timeflow/ancien-refuse'}));
+      throw e2;
+    }
+  }
+  await fbAuth.currentUser.updatePassword(nouveau);
+}
+
 function assurerAuth(){
   if(typeof firebase==='undefined'||typeof firebase.auth!=='function')
     return Promise.reject(new Error("module d'authentification non chargé"));
-  if(!fbAuth)fbAuth=firebase.auth();
-  if(fbAuth.currentUser)return Promise.resolve(fbAuth.currentUser);
+  if(!fbAuth){fbAuth=firebase.auth();surveillerSession();}
+  if(!compteActif()){
+    // Connexion anonyme — fonctionnement d'origine, inchangé.
+    if(fbAuth.currentUser)return Promise.resolve(fbAuth.currentUser);
+    if(!authPromesse){
+      authPromesse=connexionAnonyme()
+        .catch(err=>{authPromesse=null;throw err;});
+    }
+    return authPromesse;
+  }
+  if(estCompteAttendu(fbAuth.currentUser))return Promise.resolve(fbAuth.currentUser);
+  /* Mémorisée seulement tant qu'elle est en cours : une session perdue plus
+     tard (code changé ailleurs) doit pouvoir relancer une connexion. */
   if(!authPromesse){
-    authPromesse=fbAuth.signInAnonymously()
-      .then(res=>res&&res.user?res.user:fbAuth.currentUser)
-      .catch(err=>{authPromesse=null;throw err;});
+    authPromesse=sessionRestauree()
+      .then(u=>estCompteAttendu(u)?u:connexionCompte())
+      .then(u=>{authPromesse=null;majInfoCompte();return u;},
+            err=>{authPromesse=null;throw err;});
   }
   return authPromesse;
 }
@@ -1264,10 +1586,12 @@ async function pushToCloud(manual){
     if(manual)showToast(`Synchronisé ☁️ — ${Object.keys(S.punches||{}).length} jour(s) envoyés`,2500);
   }catch(err){
     console.error('pushToCloud:',err);
-    setSyncStatusUI('error',err.message);
+    setSyncStatusUI('error',messageAuth(err));
+    // Le code va être redemandé : l'écran de code suffit comme signal.
+    if(err&&(err.code==='timeflow/code-requis'||err.code==='timeflow/code-refuse'))return;
     // Toujours visible, même sur un envoi automatique : une synchro qui
     // échoue en silence, c'est une modification perdue au prochain appareil.
-    showToast('❌ Synchro impossible : '+err.message,5000);
+    showToast('❌ Synchro impossible : '+messageAuth(err),5000);
   }
 }
 
@@ -1326,7 +1650,8 @@ async function pullFromCloud(manual){
     if(!snap.exists){setSyncStatusUI('connected');if(manual)showToast('Aucune donnée cloud pour ce code',2800);return;}
     applyRemoteData(snap.data(),false,manual===true);setSyncStatusUI('connected');
   }catch(err){
-    setSyncStatusUI('error',err.message);
+    setSyncStatusUI('error',messageAuth(err));
+    if(err&&(err.code==='timeflow/code-requis'||err.code==='timeflow/code-refuse'))return;
     /* Un refus de permission n'est jamais un incident réseau : c'est la
        règle Firestore ou le code de synchro. Toujours l'afficher, même sur
        une récupération automatique — sinon l'app semble marcher alors
@@ -1384,10 +1709,7 @@ function connectSync(manual){
     if(!cfg||!cfg.config||!cfg.code){setSyncStatusUI('off');return;}
     if(typeof firebase==='undefined'){setSyncStatusUI('error','Librairie Firebase non chargée.');return;}
     if(fbDb&&fbUnsub&&connectedSyncCode===cfg.code){setSyncStatusUI('connected');if(manual)showToast('Déjà connecté ☁️',2200);return;}
-    if(!fbApp){
-      fbApp=firebase.apps&&firebase.apps.length?firebase.apps[0]:firebase.initializeApp(cfg.config);
-      fbDb=firebase.firestore();
-    }
+    initFirebase(cfg.config);
     /* Le listener temps réel ouvre lui aussi une lecture : il ne démarre
        qu'une fois le jeton obtenu, sinon Firestore le refuse. */
     setSyncStatusUI('syncing');
@@ -1399,11 +1721,32 @@ function connectSync(manual){
        lent, l'écran restait sinon à zéro plusieurs secondes — et le premier
        enregistrement partait en écrasement (bloqué par le garde-fou). */
       if(!Object.keys(S.punches||{}).length)pullFromCloud(false);
+      majInfoCompte();
       if(manual)showToast('Connecté ☁️',2800);
     }).catch(err=>{
       console.error('auth:',err);
-      setSyncStatusUI('error','authentification refusée — '+err.message);
-      showToast("❌ Connexion refusée : "+err.message,5200);
+      const c=(err&&err.code)||'';
+      /* Appareil mémorisé sans session de compte (première ouverture après
+         la mise à jour, ou session expirée) : le code est redemandé UNE fois. */
+      if(c==='timeflow/code-requis'){
+        setSyncStatusUI('error','code à retaper une fois');
+        if(navigator.onLine!==false){
+          showToast('🔐 Sécurité renforcée : retape ton code une fois sur cet appareil',6500);
+          afficherEcranCode(false);
+        }
+        return;
+      }
+      /* Le compte refuse le code tapé : on n'ouvre surtout pas un espace au
+         hasard. L'appareil oublie ce code et le redemande. */
+      if(c==='timeflow/code-refuse'){
+        ecrireAcces(null);setSyncConfig(null);mdpSession=null;
+        setSyncStatusUI('error',messageAuth(err));
+        afficherEcranCode(false);
+        erreurCode('Code refusé par le compte de synchronisation');
+        return;
+      }
+      setSyncStatusUI('error','authentification refusée — '+messageAuth(err));
+      showToast("❌ Connexion refusée : "+messageAuth(err),5200);
     });
   }catch(err){console.error('connectSync:',err);setSyncStatusUI('error',err.message);if(manual)showToast('❌ Échec de connexion',3000);}
 }
@@ -1450,6 +1793,7 @@ function initSyncModal(){
   const esp=document.getElementById('espaceId');
   if(esp)esp.textContent=cfg?.code?(cfg.code.slice(0,16)+'…'):'—';
   document.getElementById('syncEnabledToggle').checked=!!cfg?.enabled;
+  majInfoCompte();
   if(cfg&&cfg.config&&cfg.code)connectSync(false);else setSyncStatusUI('off');
 }
 
@@ -1469,7 +1813,8 @@ document.getElementById('connectSyncBtn')?.addEventListener('click',()=>{
 });
 
 document.getElementById('changerCodeBtn')?.addEventListener('click',()=>{
-  if(!confirm('Changer le code d\'accès ?\n\nTes données seront recopiées sous le nouveau code. L\'ancien espace restera dans Firebase : tu pourras le supprimer depuis la console.'))return;
+  const autres=compteDedie()?'\n\nTon code actuel te sera demandé d\'abord. Tes autres appareils te redemanderont ensuite le nouveau code.':'';
+  if(!confirm('Changer le code d\'accès ?\n\nTes données seront recopiées sous le nouveau code. L\'ancien espace restera dans Firebase : tu pourras le supprimer depuis la console.'+autres))return;
   syncModal?.classList.add('hidden');
   afficherEcranCode(true);
 });

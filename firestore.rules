@@ -1,20 +1,28 @@
 // ════════════════════════════════════════════════════════════════════
-//  RÈGLES FIRESTORE — TimeFlow
+//  RÈGLES FIRESTORE — TimeFlow (compte de synchronisation)
 //
-//  Ce fichier est la COPIE DE RÉFÉRENCE de ce qui est réellement déployé
-//  dans Firebase Console → Firestore Database → Règles. Le dépôt ne fait
-//  foi de rien : seule la console compte. Il sert à relire, à comparer,
-//  et à retrouver le texte exact en cas de fausse manœuvre.
+//  Ce fichier est la COPIE DE RÉFÉRENCE de ce qui est déployé dans
+//  Firebase Console → Firestore Database → Règles. Le dépôt ne fait foi
+//  de rien : seule la console compte.
+//
+//  ⚠️ NE PAS PUBLIER TEL QUEL. Avant de coller dans la console :
+//    1. SYNC_EMAIL est renseigné dans firebase-config.js ;
+//    2. chaque appareil s'est déverrouillé une fois avec le code
+//       (☰ → Synchronisation affiche « UID : … ») ;
+//    3. REMPLACER_PAR_TON_UID ci-dessous est remplacé par cet UID
+//       (aussi visible dans Authentication → Utilisateurs).
+//  Un UID n'est pas un secret : le garder ici en clair ne pose pas de
+//  problème. Tant que l'étape 2 n'est pas finie, garder la version de
+//  repli (en bas du fichier) en ligne.
 //
 //  Modèle d'accès :
-//    1. un jeton Firebase est obligatoire  → plus aucun accès anonyme
-//       depuis un simple curl ou un script de robot ;
-//    2. le code de synchronisation fait au moins 20 caractères → il ne
-//       se devine plus par force brute (un code à 4 chiffres, c'est
-//       10 000 essais, quelques minutes) ;
-//    3. le document doit ressembler à un document TimeFlow → un tiers
-//       ne peut pas remplir la base avec n'importe quoi ;
-//    4. la suppression est interdite depuis l'app.
+//    1. seul le compte de synchronisation est accepté → connaître
+//       l'identifiant d'un espace ne suffit plus, un compte anonyme ou
+//       créé par un tiers ne lit rien et n'écrit rien ;
+//    2. l'identifiant d'espace fait au moins 20 caractères → les anciens
+//       codes courts (4 chiffres) restent inutilisables ;
+//    3. le document doit ressembler à un document TimeFlow ;
+//    4. la liste de la collection et la suppression sont interdites.
 // ════════════════════════════════════════════════════════════════════
 
 rules_version = '2';
@@ -22,9 +30,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // L'unique compte autorisé à lire et écrire.
+    function estLeCompte() {
+      return request.auth != null
+          && request.auth.uid == 'REMPLACER_PAR_TON_UID';
+    }
+
     match /tf_pointage/{code} {
 
-      // Le code de synchro joue le rôle de secret : il doit être long.
+      // L'identifiant d'espace est dérivé du code d'accès : 40 caractères.
       function codeValide() {
         return code.size() >= 20
             && code.size() <= 64
@@ -41,32 +55,38 @@ service cloud.firestore {
             && charge().keys().hasAll(['punches','updatedAt'])
             && charge().punches is map
             && charge().punches.size() <= 20000
-            // `is number` existe, mais `int || float` est accepté par toutes
-            // les versions du moteur de règles : aucun risque à la compilation.
             && (charge().updatedAt is int || charge().updatedAt is float);
       }
 
-      // `get` = lire UN document dont on connaît déjà l'identifiant.
-      allow get:            if request.auth != null && codeValide();
+      // `get` = lire UN document dont on connaît l'identifiant.
+      allow get:            if estLeCompte() && codeValide();
 
-      // `list` = parcourir la collection. Toujours refusé : sans cela, un
-      // compte anonyme pourrait énumérer tous les espaces et le secret du
-      // code ne protégerait plus rien.
+      // `list` = parcourir la collection : toujours refusé.
       allow list:           if false;
 
-      allow create, update: if request.auth != null && codeValide() && chargeValide();
+      allow create, update: if estLeCompte() && codeValide() && chargeValide();
 
       // L'app ne supprime jamais. Le ménage se fait depuis la console,
       // où les règles ne s'appliquent pas.
-      allow delete: if false;
+      allow delete:         if false;
     }
 
     // Tout le reste de la base est fermé.
-    // (Rappel : les règles s'additionnent, ce bloc n'annule pas celui
-    //  du dessus — il ferme seulement ce qui n'est pas explicitement
-    //  autorisé ailleurs.)
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
+
+// ────────────────────────────────────────────────────────────────────
+//  VERSION DE REPLI — celle en ligne avant le compte de synchronisation.
+//  À recoller telle quelle si la version ci-dessus bloque la synchro
+//  (UID mal recopié, appareil pas encore passé au compte…). Identique à
+//  la version du dessus, avec `request.auth != null` à la place de
+//  `estLeCompte()` :
+//
+//    allow get:            if request.auth != null && codeValide();
+//    allow list:           if false;
+//    allow create, update: if request.auth != null && codeValide() && chargeValide();
+//    allow delete:         if false;
+// ────────────────────────────────────────────────────────────────────

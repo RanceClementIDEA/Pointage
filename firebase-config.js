@@ -25,3 +25,20 @@ const FIREBASE_CONFIG = {
 /* Volontairement vide. Ne jamais y remettre de code : ce fichier part sur
    GitHub à chaque déploiement. */
 const DEFAULT_SYNC_CODE = "";
+
+/* ── Compte de synchronisation ─────────────────────────────────────────
+   Adresse FICTIVE qui nomme l'unique compte Firebase autorisé par les
+   règles Firestore. Aucun e-mail n'y est jamais envoyé, ce n'est pas un
+   secret : le mot de passe est dérivé du code d'accès sur l'appareil et
+   n'est écrit nulle part.
+     ""  → connexion anonyme (fonctionnement d'avant)
+     une adresse → compte dédié. N'activer qu'APRÈS avoir activé la
+     méthode « Adresse e-mail/Mot de passe » dans la console Firebase.
+   Exemple : "timeflow@pointage-e9591.firebaseapp.com"               */
+const SYNC_EMAIL = "";
+
+/* ── App Check ─────────────────────────────────────────────────────────
+   Clé de site reCAPTCHA Enterprise (console Google Cloud → Fraud Defense).
+   Publique par nature, comme les valeurs ci-dessus.
+     ""  → App Check inactif                                         */
+const APP_CHECK_SITE_KEY = "";
