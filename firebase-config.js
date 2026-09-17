@@ -35,7 +35,7 @@ const DEFAULT_SYNC_CODE = "";
      une adresse → compte dédié. N'activer qu'APRÈS avoir activé la
      méthode « Adresse e-mail/Mot de passe » dans la console Firebase.
    Exemple : "timeflow@pointage-e9591.firebaseapp.com"               */
-const SYNC_EMAIL = "";
+const SYNC_EMAIL = "timeflow@pointage-e9591.firebaseapp.com";
 
 /* ── App Check ─────────────────────────────────────────────────────────
    Clé de site reCAPTCHA Enterprise (console Google Cloud → Fraud Defense).
